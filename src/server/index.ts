@@ -1,6 +1,7 @@
 import express from "express"; // подключаем express (сервер)
 import type { Request, Response } from "express"; // типы для TypeScript
 import { PrismaClient } from "@prisma/client"; // подключаем Prisma (работа с БД)
+import "../bot/bot.js";
 
 const app = express(); // создаём сервер
 const prisma = new PrismaClient(); // создаём подключение к базе данных

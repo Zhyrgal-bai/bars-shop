@@ -1,6 +1,6 @@
 import { Telegraf } from "telegraf";
 
-const bot = new Telegraf("8750003133:AAGXU_web3I9nIXFxRVmWBOYd-dES8mzCsU");
+const bot = new Telegraf("8750003133:AAGXU_web3I9nIXFxRVmWBOYd-dES8mzCsU"); // <-- сюда вставишь свой токен
 
 bot.start((ctx) => {
   ctx.reply("Добро пожаловать в Bars 👕", {
@@ -10,7 +10,7 @@ bot.start((ctx) => {
           {
             text: "Открыть магазин",
             web_app: {
-              url: "https://frontend-one-zeta-45.vercel.app", // фронтенд
+              url: "https://frontend-one-zeta-45.vercel.app",
             },
           },
         ],

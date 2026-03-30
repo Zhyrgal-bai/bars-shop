@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/server/index.ts",
-    "postinstall": "prisma migrate deploy || prisma db push"
+    "postinstall": "npx prisma migrate deploy"
   },
   "keywords": [],
   "author": "",

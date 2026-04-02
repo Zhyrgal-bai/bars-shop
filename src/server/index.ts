@@ -1,8 +1,11 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { bot } from "../bot/bot.js"; // ✅ ИМПОРТ БОТА
+import { bot } from "../bot/bot.js";
 import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config(); // ✅ ОБЯЗАТЕЛЬНО
 
 const app = express();
 const prisma = new PrismaClient();
@@ -37,7 +40,6 @@ app.post("/products", async (req: Request, res: Response) => {
         price: Number(price),
         image,
         description: description || "",
-
         variants: {
           create: cleanVariants.map((v: any) => ({
             color: v.color,
@@ -115,7 +117,6 @@ app.post("/orders", async (req: Request, res: Response) => {
         userId: user.id,
         total: Number(body.total),
         status: "new",
-
         items: {
           create: body.items.map((item: any) => ({
             productId: Number(item.productId),
@@ -136,6 +137,8 @@ app.post("/orders", async (req: Request, res: Response) => {
 
     // ================== 🔥 TELEGRAM NOTIFICATION ==================
     try {
+      console.log("ADMIN_ID:", process.env.ADMIN_ID);
+
       const message = `
 🛒 <b>Новый заказ</b>
 
@@ -158,8 +161,10 @@ ${order.items
         message,
         { parse_mode: "HTML" }
       );
+
+      console.log("✅ TELEGRAM SENT");
     } catch (err) {
-      console.error("TELEGRAM ERROR:", err);
+      console.error("❌ TELEGRAM ERROR:", err);
     }
     // ============================================================
 

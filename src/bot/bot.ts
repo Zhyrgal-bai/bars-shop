@@ -32,28 +32,42 @@ bot.on("message", (ctx) => {
 // ================== CALLBACK BUTTONS ==================
 bot.on("callback_query", async (ctx) => {
   try {
-    // ✅ проверяем что это именно data callback
     if (!("data" in ctx.callbackQuery)) return;
 
     const data = ctx.callbackQuery.data;
-
     console.log("CALLBACK:", data);
 
-    // ✅ Принять заказ
+    // ================== ✅ ПРИНЯТЬ ==================
     if (data.startsWith("order_accept_")) {
       const orderId = Number(data.split("_")[2]);
 
+      // обновляем статус
       await prisma.order.update({
         where: { id: orderId },
         data: { status: "accepted" },
       });
 
+      // получаем заказ с пользователем
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { user: true },
+      });
+
       await ctx.answerCbQuery("Заказ принят ✅");
 
-      await ctx.editMessageText(`✅ Заказ #${orderId} принят`);
+      // ❗ НЕ удаляем старое сообщение
+      await ctx.reply(`✅ Заказ #${orderId} принят`);
+
+      // 🔥 уведомление пользователю
+      if (order?.user?.telegramId) {
+        await bot.telegram.sendMessage(
+          Number(order.user.telegramId),
+          "✅ Ваш заказ принят!"
+        );
+      }
     }
 
-    // ❌ Завершить заказ
+    // ================== ❌ ЗАВЕРШИТЬ ==================
     if (data.startsWith("order_done_")) {
       const orderId = Number(data.split("_")[2]);
 
@@ -62,9 +76,22 @@ bot.on("callback_query", async (ctx) => {
         data: { status: "completed" },
       });
 
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { user: true },
+      });
+
       await ctx.answerCbQuery("Заказ завершен ✅");
 
-      await ctx.editMessageText(`📦 Заказ #${orderId} завершен`);
+      await ctx.reply(`📦 Заказ #${orderId} завершен`);
+
+      // 🔥 уведомление пользователю
+      if (order?.user?.telegramId) {
+        await bot.telegram.sendMessage(
+          Number(order.user.telegramId),
+          "📦 Ваш заказ завершен!"
+        );
+      }
     }
   } catch (error) {
     console.error("CALLBACK ERROR:", error);

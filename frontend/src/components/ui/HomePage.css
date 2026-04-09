@@ -1,0 +1,54 @@
+.home-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #3A0000 30%, #1a1220 100%);
+  padding: 0 16px;
+}
+
+/* HERO */
+.hero {
+  padding: 2px 0;
+  margin-bottom: 20px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+  color: #fff;
+  text-align: center;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: 'Roboto', sans-serif;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: 'Roboto', sans-serif;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: 'Roboto', sans-serif;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  opacity: 0.7;
+  color: #f60a0a;
+  text-align: center;
+}

@@ -1,46 +1,216 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-}
-
 body {
-  background: #f5f5f5;
-  color: #111;
+  margin: 0;
+  font-family: sans-serif;
+  overflow: hidden;
+  background: #111;
 }
 
-button {
-  cursor: pointer;
-  border: none;
+/* APP */
+.app {
+  width: 390px;
+  height: 100vh;
+  margin: auto;
+  background: #3A0000;
+  overflow: hidden;
+  position: relative;
+
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+.app.menu-open {
+  transform: translateX(80px) scale(0.95);
+  border-radius: 20px;
+}
+
+/* HEADER */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  background: white;
-  border-bottom: 1px solid #ddd;
+  padding: 16px;
+  background: #00083E;
+  color: #FFFFFF;
 }
 
-.header h1 {
-  font-size: 22px;
+.logo {
+  margin: 0;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: 'Roboto', sans-serif;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: 'Roboto', sans-serif;
+  font-style: italic;
 }
 
-.nav {
+/* BURGER */
+.burger {
+  width: 30px;
+  cursor: pointer;
+  z-index: 20;
+}
+
+.burger span {
+  display: block;
+  height: 3px;
+  background: #FFFFFF;
+  margin: 6px 0;
+  transition: 0.3s;
+}
+
+.burger.active span:nth-child(1) {
+  transform: translateY(9px) rotate(45deg);
+}
+
+.burger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.burger.active span:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
+
+/* CONTENT */
+.content {
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* SIDE MENU */
+.side-menu {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 260px;
+  height: 100%;
+
+  background: #FFFFFF;
+  padding: 40px 20px;
+
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+
+  z-index: 15;
+
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.nav button {
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: #111;
+.side-menu.open {
+  transform: translateX(0);
+}
+
+.side-menu button {
+  background: none;
+  border: none;
+  color: #00083E;
+  font-size: 18px;
+  text-align: left;
+}
+
+/* OVERLAY */
+.overlay {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition: 0.3s;
+
+  z-index: 10;
+}
+
+.overlay {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ANIMATION */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Enhanced Floating Cart Microinteraction --- */
+.floating-cart {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+
+  width: 56px;
+  height: 56px;
+
+  background: black;
   color: white;
-  font-size: 12px;
+
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 20px;
+
+  z-index: 100;
+
+  /* Premium enhancements */
+  box-shadow: 
+    0 2px 8px 0 rgba(30, 0, 50, 0.10),  /* soft shadow for light floating */
+    0 1.5px 4px 0 rgba(60, 0, 0, 0.08);  /* subtle depth */
+  transition:
+    box-shadow 0.17s cubic-bezier(0.63,0.08,0.44,0.99),
+    transform 0.13s cubic-bezier(0.47, 1.64, 0.41, 0.84),
+    background 0.17s cubic-bezier(0.4, 0.14, 0.3, 1);
+  will-change: transform, box-shadow;
+  user-select: none;
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
-.nav button:hover {
-  opacity: 0.8;
+.floating-cart:active {
+  transform: scale(0.93);
+  box-shadow:
+    0 1.5px 4px 0 rgba(30, 0, 50, 0.10),
+    0 0.5px 2px 0 rgba(60, 0, 0, 0.07);
+}
+
+/* Also support keyboard press effect */
+.floating-cart:focus-visible {
+  outline: none;
+  box-shadow:
+    0 2.5px 11px 0 rgba(80,0,90,0.17),
+    0 1.5px 4px 0 rgba(60,0,0,0.13);
+  transform: scale(0.95);
+}
+
+.cart-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+
+  background: red;
+  color: white;
+
+  font-size: 12px;
+  padding: 2px 6px;
+
+  border-radius: 12px;
 }

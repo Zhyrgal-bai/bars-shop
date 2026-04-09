@@ -1,0 +1,150 @@
+.header {
+  height: 70px;
+  background: #00083E;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.header__burger {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header__burger-line {
+  width: 100%;
+  height: 4px;
+  background: #fff;
+  border-radius: 99px;
+  transition: all 0.23s cubic-bezier(0.5,1,0.33,1.2);
+}
+
+.header__title {
+  color: #fff;
+  font-weight: bold;
+  font-style: italic;
+  font-size: 1.42rem;
+  letter-spacing: 1.7px;
+  /* Keep a clean, modern appearance */
+  user-select: none;
+}
+
+@media (max-width: 500px) {
+  .header {
+    height: 56px;
+    padding: 0 8px;
+  }
+  .header__title {
+    font-size: 1.08rem;
+    letter-spacing: 1.1px;
+  }
+  .header__burger {
+    width: 28px;
+    height: 28px;
+    gap: 5px;
+  }
+  .header__burger-line {
+    height: 3px;
+  }
+}
+
+/* HEADER */
+.header {
+    height: 70px;
+    background: #00083E;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+  }
+  
+  /* LOGO */
+  .header__title {
+    color: #fff;
+    font-weight: 800;
+    font-style: italic;
+    font-size: 20px;
+    letter-spacing: 1.5px;
+  }
+  
+  /* BURGER */
+  .header__burger {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .header__burger-line {
+    background: #fff;
+    height: 3px;
+    border-radius: 2px;
+    width: 100%;
+    transition: 0.2s;
+  }
+
+  /* OVERLAY */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.25s;
+    z-index: 1000;
+  }
+  
+  .overlay.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+  
+  /* SIDE MENU */
+  .side-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 240px;
+    height: 100%;
+    background: #0f0f12;
+    padding: 80px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  
+    transform: translateX(-100%);
+    transition: 0.3s ease;
+    z-index: 1100;
+  }
+  
+  .side-menu.open {
+    transform: translateX(0);
+  }
+  
+  /* LINKS */
+  .side-menu button {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    text-align: left;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 0;
+    transition: 0.2s;
+  }
+  
+  .side-menu button:hover {
+    opacity: 0.7;
+  }

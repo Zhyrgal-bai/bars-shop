@@ -4,6 +4,8 @@ import AdminPage from "./pages/AdminPage";
 import { useState } from "react";
 import { useCartStore } from "./store/useCartStore";
 import "./App.css";
+import Header from "./components/layout/Header";
+import SideMenu from "./components/layout/SideMenu";
 
 // Floating Cart Button Styling
 const floatingCartStyle: React.CSSProperties = {
@@ -45,10 +47,6 @@ const cartCountStyle: React.CSSProperties = {
   padding: "0 6px"
 };
 
-function isAdmin() {
-  return true;
-}
-
 export default function App() {
   const [page, setPage] = useState<"home" | "cart" | "admin">("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -62,7 +60,6 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
-  // Floating cart button: always visible, opens cart
   const handleFloatingCartClick = () => {
     if (page !== "cart") {
       setPage("cart");
@@ -71,52 +68,28 @@ export default function App() {
   };
 
   return (
-    <div className={`app${isMenuOpen ? " menu-open" : ""}`}>
-      {/* Header */}
-      <div className="header">
-        <button className="burger" onClick={handleMenuToggle}>
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <h1 className="logo">Barś</h1>
-      </div>
+    <div className="app">
+      <Header onMenuToggle={handleMenuToggle} />
 
-      {/* Side Menu */}
-      <div className={`side-menu${isMenuOpen ? " open" : ""}`}>
-        <nav>
-          <button className="menu-link" onClick={() => handleNav("home")}>
-            Главная
-          </button>
-          <button className="menu-link" onClick={() => handleNav("cart")}>
-            Корзина
-          </button>
-          {isAdmin() && (
-            <button className="menu-link" onClick={() => handleNav("admin")}>
-              Админка
-            </button>
-          )}
-        </nav>
-      </div>
+      <SideMenu
+        open={isMenuOpen}
+        onClose={handleMenuClose}
+        onNav={handleNav}
+      />
 
-      {/* Overlay */}
-      {isMenuOpen && <div className="overlay" onClick={handleMenuClose}></div>}
-
-      {/* Content */}
       <div className="content">
         {page === "home" && <HomePage />}
         {page === "cart" && <CartPage />}
         {page === "admin" && <AdminPage />}
       </div>
 
-      {/* Floating Cart Button */}
       <button
         className="floating-cart"
         style={floatingCartStyle}
         onClick={handleFloatingCartClick}
         aria-label="Открыть корзину"
       >
-        <span role="img" aria-label="Cart" style={{fontWeight: 400}}>🛒</span>
+        <span role="img" aria-label="Cart" style={{ fontWeight: 400 }}>🛒</span>
         {items.length > 0 && (
           <span className="cart-count" style={cartCountStyle}>{items.length}</span>
         )}

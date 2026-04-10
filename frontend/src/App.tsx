@@ -3,10 +3,8 @@ import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import AdminPage from "./pages/AdminPage";
 import FAQPage from "./pages/FAQPage";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useCartStore } from "./store/useCartStore";
-import { API_BASE_URL } from "./services/api";
-import { getTelegramWebAppUserId } from "./utils/isAdmin";
 import "./App.css";
 import "./components/ui/Admin.css";
 import Header from "./components/layout/Header";
@@ -18,48 +16,17 @@ export default function App() {
     "home" | "cart" | "checkout" | "admin" | "faq"
   >("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  /** Проверка /check-admin уже завершена (или userId нет — показывать итог без ожидания). */
-  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
 
-  const userId = useMemo(() => getTelegramWebAppUserId(), []);
+  // @ts-expect-error Telegram WebApp
+  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
+  const userId = tg?.initDataUnsafe?.user?.id;
+  const ADMIN_ID = Number(import.meta.env.VITE_ADMIN_ID);
+  const isAdmin = userId === ADMIN_ID;
 
   useEffect(() => {
-    if (!userId) {
-      setIsAdmin(false);
-      setAdminCheckComplete(true);
-      return;
-    }
+    console.log(userId, ADMIN_ID);
+  }, [userId, ADMIN_ID]);
 
-    let cancelled = false;
-    const url = `${API_BASE_URL.replace(/\/$/, "")}/check-admin`;
-
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    })
-      .then((res) => res.json())
-      .then((data: { isAdmin?: boolean }) => {
-        if (!cancelled) {
-          setIsAdmin(Boolean(data.isAdmin));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setIsAdmin(false);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setAdminCheckComplete(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
   const items = useCartStore((state) => state.items);
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
 
@@ -103,13 +70,8 @@ export default function App() {
             onOrderSuccess={() => setPage("home")}
           />
         )}
-        {page === "admin" && !adminCheckComplete && (
-          <div className="admin-page">
-            <p className="admin-loading">Проверка доступа…</p>
-          </div>
-        )}
-        {page === "admin" && adminCheckComplete && isAdmin && <AdminPage />}
-        {page === "admin" && adminCheckComplete && !isAdmin && (
+        {page === "admin" && isAdmin && <AdminPage />}
+        {page === "admin" && !isAdmin && (
           <div className="admin-page">
             <div className="no-access">Нет доступа</div>
           </div>

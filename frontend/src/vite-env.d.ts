@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_ADMIN_ID?: string;
+  readonly VITE_ADMIN_IDS?: string;
   readonly VITE_API_URL?: string;
 }
 

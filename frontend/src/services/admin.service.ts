@@ -5,7 +5,7 @@ import { getTelegramWebAppUserId } from "../utils/telegram";
 /** userId из window.Telegram.WebApp.initDataUnsafe.user.id — для всех admin-запросов. */
 function requireAdminUserId(): number {
   const userId = getTelegramWebAppUserId();
-  if (userId == null) {
+  if (!Number.isFinite(userId)) {
     throw new Error("Откройте приложение в Telegram");
   }
   return userId;

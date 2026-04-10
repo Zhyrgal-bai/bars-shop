@@ -3,56 +3,25 @@ import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import AdminPage from "./pages/AdminPage";
 import FAQPage from "./pages/FAQPage";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useCartStore } from "./store/useCartStore";
-import { API_BASE_URL } from "./services/api";
 import "./App.css";
 import "./components/ui/Admin.css";
 import Header from "./components/layout/Header";
 import SideMenu from "./components/layout/SideMenu";
 import FloatingCart from "./components/layout/FloatingCart";
 import { getTelegramWebAppUserId } from "./utils/telegram";
+import { parseViteAdminIds } from "./utils/adminIds";
 
 export default function App() {
   const [page, setPage] = useState<
     "home" | "cart" | "checkout" | "admin" | "faq"
   >("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
 
+  const adminIds = useMemo(() => parseViteAdminIds(), []);
   const userId = useMemo(() => getTelegramWebAppUserId(), []);
-
-  useEffect(() => {
-    if (userId == null) {
-      setIsAdmin(false);
-      setAdminCheckComplete(true);
-      return;
-    }
-
-    let cancelled = false;
-    const url = `${API_BASE_URL}/check-admin`;
-
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    })
-      .then((res) => res.json())
-      .then((data: { isAdmin?: boolean }) => {
-        if (!cancelled) setIsAdmin(Boolean(data.isAdmin));
-      })
-      .catch(() => {
-        if (!cancelled) setIsAdmin(false);
-      })
-      .finally(() => {
-        if (!cancelled) setAdminCheckComplete(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+  const isAdmin = adminIds.includes(userId);
 
   const items = useCartStore((state) => state.items);
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
@@ -97,13 +66,8 @@ export default function App() {
             onOrderSuccess={() => setPage("home")}
           />
         )}
-        {page === "admin" && !adminCheckComplete && (
-          <div className="admin-page">
-            <p className="admin-loading">Проверка доступа…</p>
-          </div>
-        )}
-        {page === "admin" && adminCheckComplete && isAdmin && <AdminPage />}
-        {page === "admin" && adminCheckComplete && !isAdmin && (
+        {page === "admin" && isAdmin && <AdminPage />}
+        {page === "admin" && !isAdmin && (
           <div className="admin-page">
             <div className="no-access">Нет прав</div>
           </div>

@@ -4,7 +4,7 @@ type SideMenuProps = {
   open: boolean;
   onClose: () => void;
   onNav: (page: "home" | "cart" | "checkout" | "admin" | "faq") => void;
-  /** После успешной проверки POST /check-admin. */
+  /** См. `VITE_ADMIN_IDS` + Telegram `user.id` в App. */
   isAdmin?: boolean;
 };
 

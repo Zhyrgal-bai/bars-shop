@@ -105,7 +105,8 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
     }
 
     const tg = getTelegramUser();
-    const userId = getTelegramWebAppUserId() ?? tg?.id;
+    const uid = getTelegramWebAppUserId();
+    const userId = Number.isFinite(uid) ? uid : Number(tg?.id);
     const promoCode = promo.trim();
 
     let payTotal = totalPrice;
@@ -132,9 +133,9 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
     setSubmitting(true);
     try {
       await api.post("/orders", {
-        ...(userId != null ? { userId } : {}),
+        ...(Number.isFinite(userId) ? { userId } : {}),
         user: {
-          telegramId: tg?.id ?? 0,
+          telegramId: Number.isFinite(Number(tg?.id)) ? Number(tg?.id) : 0,
           name: orderData.name || tg?.first_name || "Гость",
         },
         phone: orderData.phone,
@@ -161,7 +162,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...(userId != null ? { userId } : {}),
+          ...(Number.isFinite(userId) ? { userId } : {}),
           name: orderData.name,
           phone: orderData.phone,
           address: orderData.address,
@@ -176,7 +177,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
           subtotal: totalPrice,
           total: payTotal,
           promoCode,
-          customerTelegramId: tg?.id,
+          customerTelegramId: Number(tg?.id),
         }),
       });
 

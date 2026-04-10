@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
 import cors from "cors";
 import dotenv from "dotenv";
-import { adminIdsIncludes, requireAdmin } from "./adminAuth.js";
+import { denyIfNotAdmin, isAdmin } from "./adminAuth.js";
 import {
   createMemoryOrder,
   getMemoryOrder,
@@ -94,17 +94,17 @@ app.get("/", (req: Request, res: Response) => {
 // ================== CHECK ADMIN ==================
 app.post("/check-admin", (req: Request, res: Response) => {
   const { userId } = req.body as { userId?: unknown };
-  res.json({ isAdmin: adminIdsIncludes(userId) });
+  res.json({ isAdmin: isAdmin(userId) });
 });
 
 // ================== PAYMENT DETAILS (in-memory) ==================
 app.post("/payment/list", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
   res.json(listPaymentDetails());
 });
 
 app.post("/payment", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
 
   const { type, value } = req.body as {
     type?: string;
@@ -122,7 +122,7 @@ app.post("/payment", (req: Request, res: Response) => {
 });
 
 app.delete("/payment/:id", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
@@ -158,12 +158,12 @@ app.post("/promo/apply", (req: Request, res: Response) => {
 });
 
 app.post("/promo/list", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
   res.json(listPromoRecords());
 });
 
 app.post("/promo", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
 
   const { code, discount, maxUses } = req.body as {
     code?: unknown;
@@ -197,7 +197,7 @@ app.post("/promo", (req: Request, res: Response) => {
 });
 
 app.delete("/promo/:code", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
 
   const codeParam = req.params.code;
   const encoded =
@@ -217,7 +217,7 @@ app.delete("/promo/:code", (req: Request, res: Response) => {
 // ================== CREATE PRODUCT ==================
 app.post("/products", async (req: Request, res: Response) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!denyIfNotAdmin(req, res)) return;
 
     const { name, price, image, description, variants } = req.body;
 
@@ -400,7 +400,7 @@ app.get("/order/:id", (req: Request, res: Response) => {
 });
 
 app.post("/order/status", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
 
   const { id, status } = req.body as {
     id?: number;
@@ -420,7 +420,7 @@ app.post("/order/status", (req: Request, res: Response) => {
 });
 
 app.post("/analytics", (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
   const orders = listMemoryOrders();
   const totalOrders = orders.length;
   const totalRevenue = orders
@@ -465,7 +465,7 @@ app.get("/products", async (req: Request, res: Response) => {
 
 // ================== LIST ORDERS (admin, Prisma) ==================
 app.post("/orders/list", async (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
+  if (!denyIfNotAdmin(req, res)) return;
   try {
     const rows = await prisma.order.findMany({
       include: { user: true },
@@ -627,7 +627,7 @@ app.post("/orders", async (req: Request, res: Response) => {
 // ================== UPDATE PRODUCT ==================
 app.put("/products/:id", async (req: Request, res: Response) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!denyIfNotAdmin(req, res)) return;
 
     const { name, price, image, description } = req.body;
 
@@ -669,7 +669,7 @@ app.put("/products/:id", async (req: Request, res: Response) => {
 // ================== DELETE PRODUCT ==================
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!denyIfNotAdmin(req, res)) return;
 
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {

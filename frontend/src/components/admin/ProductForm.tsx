@@ -179,7 +179,7 @@ const ProductForm = () => {
     } catch (err) {
       console.error(err);
       if (axios.isAxiosError(err) && err.response?.status === 403) {
-        setFormError("Доступ запрещён");
+        setFormError("Нет прав");
         return;
       }
       if (err instanceof Error && err.message.includes("Telegram")) {

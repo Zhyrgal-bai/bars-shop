@@ -42,7 +42,7 @@ const ProductList = () => {
                   await deleteProduct(p.id!);
                 } catch (e) {
                   if (axios.isAxiosError(e) && e.response?.status === 403) {
-                    alert("Access denied");
+                    alert("Нет прав");
                   } else {
                     alert("Не удалось удалить товар");
                   }

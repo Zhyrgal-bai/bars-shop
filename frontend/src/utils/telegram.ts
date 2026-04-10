@@ -1,12 +1,22 @@
-/** Telegram Mini App: id из initDataUnsafe (как в ТЗ). */
+/** Telegram Mini App + fallback `VITE_ADMIN_ID` (локальная отладка). */
 export function getTelegramWebAppUserId(): number | undefined {
   if (typeof window === "undefined") return undefined;
   // @ts-expect-error Telegram WebApp
   const tg = window.Telegram?.WebApp;
-  const userId = tg?.initDataUnsafe?.user?.id;
-  return typeof userId === "number" && Number.isFinite(userId)
-    ? userId
-    : undefined;
+  let userId: number | undefined = tg?.initDataUnsafe?.user?.id;
+
+  if (typeof userId !== "number" || !Number.isFinite(userId)) {
+    const raw = import.meta.env.VITE_ADMIN_ID;
+    const first =
+      typeof raw === "string"
+        ? raw.split(",")[0]?.trim() ?? ""
+        : String(raw ?? "");
+    const n = Number(first);
+    userId = Number.isFinite(n) ? n : undefined;
+  }
+
+  console.log("FRONT USER ID:", userId);
+  return userId;
 }
 
 export const getTelegramUser = () => {

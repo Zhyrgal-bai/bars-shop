@@ -4,8 +4,81 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import cors from "cors";
 import dotenv from "dotenv";
 import { isAdmin } from "./adminAuth.js";
+import {
+  createMemoryOrder,
+  getMemoryOrder,
+  isValidOrderStatus,
+  listMemoryOrders,
+  setMemoryOrderStatus,
+  type MemoryOrderItem,
+} from "./memoryOrders.js";
+import { bot } from "../bot/bot.js";
+import {
+  addPaymentDetail,
+  deletePaymentDetail,
+  listPaymentDetails,
+} from "./memoryPayments.js";
+import {
+  addPromoRecord,
+  consumePromo,
+  deletePromoByCode,
+  listPromoRecords,
+  tryApplyPromo,
+} from "./memoryPromos.js";
 
 dotenv.config(); // ✅ ОБЯЗАТЕЛЬНО
+
+type OrderTotalBody = {
+  total?: unknown;
+  subtotal?: unknown;
+  promo?: unknown;
+  promoCode?: unknown;
+};
+
+function promoApplyErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (msg === "NOT_FOUND") return "Промокод не найден";
+  if (msg === "EXHAUSTED") return "Промокод исчерпан";
+  if (msg === "BAD_TOTAL") return "Неверная сумма";
+  if (msg === "EMPTY") return "Укажите промокод";
+  return "Промокод недействителен";
+}
+
+/** Сверка total/subtotal с промокодом (без списания использования). */
+function computeOrderTotalFromBody(
+  body: OrderTotalBody
+): { ok: true; orderTotal: number; promoRaw: string } | { ok: false; error: string } {
+  const promoRaw = String(body.promo ?? body.promoCode ?? "").trim();
+  const subtotalVal = Number(body.subtotal ?? body.total);
+  const bodyTotal = Number(body.total);
+
+  if (!Number.isFinite(bodyTotal)) {
+    return { ok: false, error: "Неверная сумма заказа" };
+  }
+
+  if (promoRaw) {
+    if (!Number.isFinite(subtotalVal) || subtotalVal < 0) {
+      return { ok: false, error: "Нужны subtotal и total для промокода" };
+    }
+    try {
+      const applied = tryApplyPromo(promoRaw, subtotalVal);
+      if (Math.abs(bodyTotal - applied.newTotal) > 0.01) {
+        return { ok: false, error: "Сумма не совпадает с промокодом" };
+      }
+      return { ok: true, orderTotal: applied.newTotal, promoRaw };
+    } catch (e) {
+      return { ok: false, error: promoApplyErrorMessage(e) };
+    }
+  }
+
+  const orderTotal = Math.round(bodyTotal);
+  if (Number.isFinite(subtotalVal)) {
+    if (Math.abs(orderTotal - Math.round(subtotalVal)) > 0.01) {
+      return { ok: false, error: "Неверная сумма" };
+    }
+  }
+  return { ok: true, orderTotal, promoRaw: "" };
+}
 
 const app = express();
 const prisma = new PrismaClient();
@@ -20,8 +93,142 @@ app.get("/", (req: Request, res: Response) => {
 
 // ================== CHECK ADMIN ==================
 app.post("/check-admin", (req: Request, res: Response) => {
-  const userId = req.body?.userId;
-  res.json({ isAdmin: isAdmin(userId) });
+  const { userId } = req.body as { userId?: unknown };
+  const isAdminUser = isAdmin(userId);
+  res.json({ isAdmin: isAdminUser });
+});
+
+// ================== PAYMENT DETAILS (in-memory) ==================
+app.get("/payment", (_req: Request, res: Response) => {
+  res.json(listPaymentDetails());
+});
+
+app.post("/payment", (req: Request, res: Response) => {
+  const { userId, type, value } = req.body as {
+    userId?: unknown;
+    type?: string;
+    value?: string;
+  };
+
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const t = String(type ?? "").trim();
+  const v = String(value ?? "").trim();
+  if (!t || !v) {
+    return res.status(400).json({ error: "Нужны type и value" });
+  }
+
+  const created = addPaymentDetail(t, v);
+  res.status(201).json(created);
+});
+
+app.delete("/payment/:id", (req: Request, res: Response) => {
+  const { userId } = req.body as { userId?: unknown };
+
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "Неверный id" });
+  }
+
+  if (!deletePaymentDetail(id)) {
+    return res.status(404).json({ error: "Не найдено" });
+  }
+
+  res.status(204).send();
+});
+
+// ================== PROMO CODES (in-memory) ==================
+app.post("/promo/apply", (req: Request, res: Response) => {
+  const { code, total } = req.body as { code?: unknown; total?: unknown };
+  const t = Number(total);
+  if (code == null || String(code).trim() === "" || !Number.isFinite(t)) {
+    return res.status(400).json({ error: "Нужны code и total" });
+  }
+  try {
+    const result = tryApplyPromo(String(code), t);
+    return res.json({
+      success: true,
+      newTotal: result.newTotal,
+      discount: result.discount,
+    });
+  } catch (e) {
+    const msg = promoApplyErrorMessage(e);
+    const status = msg === "Промокод не найден" ? 404 : 400;
+    return res.status(status).json({ error: msg });
+  }
+});
+
+app.get("/promo", (req: Request, res: Response) => {
+  const userId = req.query.userId;
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  res.json(listPromoRecords());
+});
+
+app.post("/promo", (req: Request, res: Response) => {
+  const { userId, code, discount, maxUses } = req.body as {
+    userId?: unknown;
+    code?: unknown;
+    discount?: unknown;
+    maxUses?: unknown;
+  };
+
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  try {
+    const row = addPromoRecord(
+      String(code ?? ""),
+      Number(discount),
+      Number(maxUses)
+    );
+    return res.status(201).json(row);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "DUPLICATE") {
+      return res.status(409).json({ error: "Такой код уже есть" });
+    }
+    if (msg === "EMPTY_CODE") {
+      return res.status(400).json({ error: "Укажите code" });
+    }
+    if (msg === "BAD_DISCOUNT") {
+      return res.status(400).json({ error: "discount от 0 до 100" });
+    }
+    if (msg === "BAD_MAX_USES") {
+      return res.status(400).json({ error: "maxUses — целое число ≥ 1" });
+    }
+    return res.status(400).json({ error: "Неверные данные промокода" });
+  }
+});
+
+app.delete("/promo/:code", (req: Request, res: Response) => {
+  const { userId } = req.body as { userId?: unknown };
+
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const codeParam = req.params.code;
+  const encoded =
+    typeof codeParam === "string"
+      ? codeParam
+      : Array.isArray(codeParam)
+        ? (codeParam[0] ?? "")
+        : "";
+  const raw = decodeURIComponent(encoded);
+  if (!deletePromoByCode(raw)) {
+    return res.status(404).json({ error: "Промокод не найден" });
+  }
+
+  res.status(204).send();
 });
 
 // ================== CREATE PRODUCT ==================
@@ -78,40 +285,76 @@ app.post("/products", async (req: Request, res: Response) => {
   }
 });
 
-type SendOrderItem = { name: string; size: string; quantity: number };
-
-// ================== SEND ORDER (Telegram) ==================
-app.post("/send-order", async (req: Request, res: Response) => {
+async function sendTelegramNewOrderAlert(orderId: number): Promise<void> {
   const BOT_TOKEN = process.env.BOT_TOKEN;
   const CHAT_ID = process.env.CHAT_ID;
-
   if (!BOT_TOKEN || !CHAT_ID) {
-    return res.status(500).json({
-      error: "Telegram не настроен: задайте BOT_TOKEN и CHAT_ID в окружении",
-    });
+    throw new Error("BOT_TOKEN или CHAT_ID не заданы");
   }
 
+  const text = `🟡 Новый заказ #${orderId}`;
+  const acceptData = `accept_${orderId}`;
+  const doneData = `done_${orderId}`;
+
+  const tgRes = await fetch(
+    `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "✅ Принять", callback_data: acceptData },
+              { text: "✅ Готово", callback_data: doneData },
+            ],
+          ],
+        },
+      }),
+    }
+  );
+
+  const tgData = (await tgRes.json().catch(() => ({}))) as {
+    ok?: boolean;
+    description?: string;
+  };
+
+  if (!tgRes.ok || tgData.ok === false) {
+    throw new Error(tgData.description ?? tgRes.statusText);
+  }
+}
+
+// ================== IN-MEMORY ORDER SYSTEM ==================
+app.post("/create-order", async (req: Request, res: Response) => {
   try {
     const body = req.body as {
       name?: string;
       phone?: string;
       address?: string;
-      items?: SendOrderItem[];
+      items?: MemoryOrderItem[];
       total?: number;
+      subtotal?: number;
+      promo?: string;
+      promoCode?: string;
+      customerTelegramId?: number;
     };
 
-    const name = String(body.name ?? "").trim() || "—";
-    const phone = String(body.phone ?? "").trim() || "—";
-    const address = String(body.address ?? "").trim() || "—";
+    const name = String(body.name ?? "").trim();
+    const phone = String(body.phone ?? "").trim();
+    const address = String(body.address ?? "").trim();
     const items = Array.isArray(body.items) ? body.items : [];
-    const total =
-      typeof body.total === "number" && !Number.isNaN(body.total)
-        ? body.total
-        : Number(body.total);
 
-    if (items.length === 0 || !Number.isFinite(total)) {
+    const totalComputed = computeOrderTotalFromBody(body);
+    if (!totalComputed.ok) {
+      return res.status(400).json({ error: totalComputed.error });
+    }
+    const { orderTotal, promoRaw } = totalComputed;
+
+    if (!name || !phone || items.length === 0) {
       return res.status(400).json({
-        error: "Нужны поля items (непустой массив) и total",
+        error: "Нужны name, phone, items (массив) и total",
       });
     }
 
@@ -123,48 +366,137 @@ app.post("/send-order", async (req: Request, res: Response) => {
       }
     }
 
-    const message = `
-🛒 НОВЫЙ ЗАКАЗ
+    const tgRaw = body.customerTelegramId;
+    const customerTelegramId =
+      tgRaw != null && Number.isFinite(Number(tgRaw)) ? Number(tgRaw) : null;
 
-👤 Имя: ${name}
-📞 Телефон: ${phone}
-📍 Адрес: ${address}
+    const order = createMemoryOrder({
+      name,
+      phone,
+      address: address || "—",
+      items,
+      total: orderTotal,
+      ...(customerTelegramId != null
+        ? { customerTelegramId }
+        : {}),
+    });
 
-📦 Товары:
-${items.map((i) => `• ${i.name} (${i.size}) x${i.quantity}`).join("\n")}
-
-💰 Итого: ${total} сом
-`.trim();
-
-    const tgRes = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: message,
-        }),
+    if (promoRaw) {
+      try {
+        consumePromo(promoRaw);
+      } catch (e) {
+        console.error("consumePromo after create-order:", e);
       }
-    );
+    }
 
-    const tgData = (await tgRes.json().catch(() => ({}))) as {
-      ok?: boolean;
-      description?: string;
-    };
-
-    if (!tgRes.ok || tgData.ok === false) {
-      console.error("Telegram sendMessage failed:", tgRes.status, tgData);
+    try {
+      await sendTelegramNewOrderAlert(order.id);
+    } catch (tgErr) {
+      console.error("Telegram create-order alert:", tgErr);
       return res.status(502).json({
-        error: "Telegram не принял сообщение",
-        details: tgData.description ?? tgRes.statusText,
+        error: "Заказ создан, но не удалось отправить уведомление в Telegram",
+        orderId: order.id,
       });
     }
 
-    res.json({ ok: true });
+    return res.status(201).json({ orderId: order.id });
   } catch (err) {
-    console.error("SEND-ORDER ERROR:", err);
-    res.status(500).json({ error: "Ошибка при отправке заказа в Telegram" });
+    console.error("CREATE-ORDER ERROR:", err);
+    res.status(500).json({ error: "Ошибка создания заказа" });
+  }
+});
+
+app.get("/order/:id", (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "Неверный id" });
+  }
+  const order = getMemoryOrder(id);
+  if (!order) {
+    return res.status(404).json({ error: "Заказ не найден" });
+  }
+  res.json(order);
+});
+
+app.post("/order/status", (req: Request, res: Response) => {
+  const { id, status, userId } = req.body as {
+    id?: number;
+    status?: string;
+    userId?: unknown;
+  };
+
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const orderId = Number(id);
+  if (!Number.isFinite(orderId) || !status || !isValidOrderStatus(status)) {
+    return res.status(400).json({ error: "Нужны id и допустимый status" });
+  }
+
+  const updated = setMemoryOrderStatus(orderId, status);
+  if (!updated) {
+    return res.status(404).json({ error: "Заказ не найден" });
+  }
+  res.json(updated);
+});
+
+app.get("/analytics", (req: Request, res: Response) => {
+  const q = req.query.userId;
+  const userId = Array.isArray(q) ? q[0] : q;
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  const orders = listMemoryOrders();
+  const totalOrders = orders.length;
+  const totalRevenue = orders
+    .filter((o) => o.status === "CONFIRMED" || o.status === "DONE")
+    .reduce((sum, o) => sum + Number(o.total), 0);
+  const accepted = orders.filter((o) => o.status === "ACCEPTED").length;
+  const done = orders.filter((o) => o.status === "DONE").length;
+  res.json({ totalOrders, totalRevenue, accepted, done });
+});
+
+function orderStatusRu(status: string): string {
+  const map: Record<string, string> = {
+    new: "Новый",
+    processing: "В обработке",
+    shipped: "Отправлен",
+    delivered: "Доставлен",
+    cancelled: "Отменён",
+  };
+  const key = status.toLowerCase();
+  return map[key] ?? status;
+}
+
+// ================== GET ORDERS (admin, Prisma) ==================
+app.get("/orders", async (req: Request, res: Response) => {
+  const q = req.query.userId;
+  const userId = Array.isArray(q) ? q[0] : q;
+  if (!isAdmin(userId)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  try {
+    const rows = await prisma.order.findMany({
+      include: { user: true },
+      orderBy: { id: "desc" },
+    });
+    const orders = rows.map((o) => {
+      const phone =
+        (o as { customerPhone?: string | null }).customerPhone?.trim() || "—";
+      return {
+        id: o.id,
+        name: o.user.name?.trim() || "Гость",
+        phone,
+        status: o.status,
+        statusText: orderStatusRu(o.status),
+        total: o.total,
+      };
+    });
+    res.json(orders);
+  } catch (e) {
+    console.error("GET ORDERS ERROR:", e);
+    res.status(500).json({ error: "Ошибка загрузки заказов" });
   }
 });
 
@@ -194,9 +526,15 @@ app.post("/orders", async (req: Request, res: Response) => {
 
   console.log("ORDER BODY:", body);
 
-  if (!body.user || !body.items || !body.total) {
+  if (!body.user || !body.items || body.total == null) {
     return res.status(400).json({ error: "Неверные данные заказа" });
   }
+
+  const totalComputed = computeOrderTotalFromBody(body);
+  if (!totalComputed.ok) {
+    return res.status(400).json({ error: totalComputed.error });
+  }
+  const orderTotal = totalComputed.orderTotal;
 
   const items = body.items as Array<{
     productId: number;
@@ -264,11 +602,18 @@ app.post("/orders", async (req: Request, res: Response) => {
         );
       }
 
+      const phoneRaw = (body as { phone?: unknown }).phone;
+      const customerPhone =
+        phoneRaw != null && String(phoneRaw).trim() !== ""
+          ? String(phoneRaw).trim()
+          : null;
+
       const order = await tx.order.create({
         data: {
           userId: user.id,
-          total: Number(body.total),
+          total: orderTotal,
           status: "new",
+          ...(customerPhone != null ? { customerPhone } : {}),
           items: {
             create: items.map((item) => ({
               productId: Number(item.productId),
@@ -393,3 +738,13 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
 });
+
+if (bot) {
+  const tgBot = bot;
+  tgBot
+    .launch()
+    .then(() => console.log("Telegram bot started 🤖"))
+    .catch((e) => console.error("Bot launch error:", e));
+  process.once("SIGINT", () => tgBot.stop("SIGINT"));
+  process.once("SIGTERM", () => tgBot.stop("SIGTERM"));
+}

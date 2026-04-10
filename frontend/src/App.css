@@ -195,9 +195,7 @@
 
 .floating-cart {
   position: fixed;
-  right: 22px;
-  bottom: 24px;
-  z-index: 100;
+  z-index: 150;
   background: #191919;
   color: #fff;
   border-radius: 50%;
@@ -209,7 +207,15 @@
   font-size: 2rem;
   box-shadow: 0 4px 18px rgba(22, 18, 14, 0.13);
   border: none;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.floating-cart:active {
+  cursor: grabbing;
+  transform: none;
 }
 
 .cart-icon {

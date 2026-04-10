@@ -57,6 +57,7 @@ model Order {
 
   total     Int
   status    String
+  customerPhone String? // телефон из формы оформления
 
   items     OrderItem[]
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useCartStore } from "../store/useCartStore";
 import { api, API_BASE_URL } from "../services/api";
@@ -10,6 +10,13 @@ type Props = {
   /** После успешного заказа (корзина уже очищена). */
   onOrderSuccess?: () => void;
 };
+
+function promoApplyUrl(): string {
+  const base = API_BASE_URL.replace(/\/$/, "");
+  return new URL("/promo/apply", `${base}/`).toString();
+}
+
+const PROMO_APPLY_ERROR = "Неверный или использован";
 
 function orderErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
@@ -30,11 +37,65 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
   const [promo, setPromo] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [promoPreview, setPromoPreview] = useState<{
+    newTotal: number;
+    discount: number;
+  } | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
 
   const totalPrice = items.reduce(
     (sum, item) => sum + item.price * (item.quantity ?? 1),
     0
   );
+
+  useEffect(() => {
+    setPromoPreview(null);
+  }, [totalPrice]);
+
+  const applyPromoCode = async (): Promise<number | null> => {
+    const code = promo.trim();
+    if (!code) {
+      setPromoPreview(null);
+      return totalPrice;
+    }
+    const applyRes = await fetch(promoApplyUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, total: totalPrice }),
+    });
+    const data = (await applyRes.json().catch(() => ({}))) as {
+      newTotal?: number;
+      discount?: number;
+    };
+    if (!applyRes.ok) {
+      alert(PROMO_APPLY_ERROR);
+      setPromoPreview(null);
+      return null;
+    }
+    if (
+      data.newTotal == null ||
+      data.discount == null ||
+      !Number.isFinite(data.newTotal)
+    ) {
+      alert(PROMO_APPLY_ERROR);
+      setPromoPreview(null);
+      return null;
+    }
+    setPromoPreview({ newTotal: data.newTotal, discount: data.discount });
+    return data.newTotal;
+  };
+
+  const handleCheckPromo = async () => {
+    if (!promo.trim()) {
+      return;
+    }
+    setPromoChecking(true);
+    try {
+      await applyPromoCode();
+    } finally {
+      setPromoChecking(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (items.length === 0) return;
@@ -44,6 +105,16 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
     }
 
     const tg = getTelegramUser();
+    const promoCode = promo.trim();
+
+    let payTotal = totalPrice;
+    if (promoCode) {
+      const t = await applyPromoCode();
+      if (t == null) return;
+      payTotal = t;
+    } else {
+      setPromoPreview(null);
+    }
 
     const orderData = {
       name: name.trim(),
@@ -54,7 +125,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
         size: i.size,
         quantity: i.quantity,
       })),
-      total: totalPrice,
+      total: payTotal,
     };
 
     setSubmitting(true);
@@ -64,6 +135,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
           telegramId: tg?.id ?? 0,
           name: orderData.name || tg?.first_name || "Гость",
         },
+        phone: orderData.phone,
         items: items.map((i) => ({
           productId: i.productId,
           name: i.name,
@@ -72,33 +144,56 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
           quantity: i.quantity,
           price: i.price,
         })),
-        total: totalPrice,
+        subtotal: totalPrice,
+        total: payTotal,
         deliveryType,
         address: orderData.address,
-        promo: promo.trim(),
+        promo: promoCode,
         comment: comment.trim(),
       });
 
-      const sendUrl = `${API_BASE_URL.replace(/\/$/, "")}/send-order`;
-      const res = await fetch(sendUrl, {
+      const createUrl = `${API_BASE_URL.replace(/\/$/, "")}/create-order`;
+      const res = await fetch(createUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify({
+          name: orderData.name,
+          phone: orderData.phone,
+          address: orderData.address,
+          items: items.map((i) => ({
+            name: i.name,
+            size: i.size,
+            quantity: i.quantity,
+            color: i.color,
+            price: i.price,
+            productId: i.productId,
+          })),
+          subtotal: totalPrice,
+          total: payTotal,
+          promoCode,
+          customerTelegramId: tg?.id,
+        }),
       });
 
       const payload = (await res.json().catch(() => ({}))) as {
         error?: string;
+        orderId?: number;
       };
 
-      if (!res.ok) {
+      if (res.status === 201) {
+        alert("Заказ отправлен");
+      } else if (res.status === 502 && payload.orderId != null) {
         alert(
           payload.error ??
-            "Заказ сохранён, но уведомление в Telegram не отправилось."
+            `Заказ #${payload.orderId}: не удалось отправить в Telegram.`
         );
       } else {
-        alert("Заказ отправлен");
+        alert(
+          payload.error ??
+            "Заказ в магазине оформлен, но не удалось создать заказ в системе уведомлений."
+        );
       }
 
       clearCart();
@@ -169,11 +264,24 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
           <option value="pickup">Самовывоз</option>
         </select>
 
-        <input
-          placeholder="Промокод"
-          value={promo}
-          onChange={(e) => setPromo(e.target.value)}
-        />
+        <div className="checkout-promo-row">
+          <input
+            placeholder="Промокод"
+            value={promo}
+            onChange={(e) => {
+              setPromo(e.target.value);
+              setPromoPreview(null);
+            }}
+          />
+          <button
+            type="button"
+            className="checkout-promo-apply"
+            onClick={handleCheckPromo}
+            disabled={promoChecking || !promo.trim()}
+          >
+            Применить
+          </button>
+        </div>
         <textarea
           placeholder="Комментарий"
           value={comment}
@@ -185,8 +293,21 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
       <div className="checkout-footer">
         <div className="total">
           <span>Итого</span>
-          <strong>{totalPrice} сом</strong>
+          <strong>
+            {promoPreview ? promoPreview.newTotal : totalPrice} сом
+          </strong>
         </div>
+        {promoPreview && (
+          <div className="checkout-promo-result">
+            <p className="checkout-promo-result__line">
+              Новая цена: <strong>{promoPreview.newTotal} сом</strong>
+            </p>
+            <p className="checkout-promo-result__line">
+              Скидка: <strong>{promoPreview.discount}%</strong>
+            </p>
+            <p className="checkout-promo-hint">Без скидки: {totalPrice} сом</p>
+          </div>
+        )}
 
         <button
           type="button"

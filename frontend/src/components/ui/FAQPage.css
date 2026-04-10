@@ -1,0 +1,29 @@
+.faq {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 20px 18px 32px;
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+  color: #e8eaef;
+}
+
+.faq h2 {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b93a7;
+}
+
+.faq p {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.65;
+  font-weight: 400;
+  color: #c8cdd8;
+}
+
+.faq p:last-of-type {
+  margin-bottom: 0;
+}

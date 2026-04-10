@@ -3,6 +3,39 @@
   color: #ffffff;
 }
 
+.analytics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.analytics > div {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.analytics--loading,
+.analytics--error {
+  display: block;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.analytics--error {
+  color: #fecaca;
+  background: rgba(255, 45, 45, 0.1);
+  border: 1px solid rgba(255, 45, 45, 0.25);
+  padding: 12px;
+  border-radius: 12px;
+}
+
 .admin-section-title {
   margin: 6px 4px 10px;
   font-size: 1rem;
@@ -371,4 +404,161 @@
   text-align: center;
   color: #9ca3af;
   font-size: 14px;
+}
+
+.admin-form--payment {
+  margin-bottom: 12px;
+}
+
+.admin-payments {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.admin-payment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-payment-line {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.admin-payment-line strong {
+  color: #ffffff;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.admin-payment-value {
+  word-break: break-all;
+  color: #d1d5db;
+}
+
+/* —— Промокоды (админка) —— */
+.admin-promo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-promo-form .admin-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-promo-list {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.admin-promo-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.admin-promo-card__code {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.admin-promo-card__discount {
+  font-size: 15px;
+  color: #e5e7eb;
+}
+
+.admin-promo-card__usage {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.admin-promo-card__delete {
+  margin-top: 4px;
+  align-self: flex-start;
+}
+
+/* —— Заказы (админка) —— */
+.orders {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.order-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.order-card h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.order-card p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.45;
+}
+
+.order-card p:last-child {
+  margin-bottom: 0;
+}
+
+.order-card .status {
+  margin-top: 10px;
+  margin-bottom: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.order-card .status.new {
+  color: #fbbf24;
+}
+
+.order-card .status.processing {
+  color: #93c5fd;
+}
+
+.order-card .status.shipped,
+.order-card .status.delivered {
+  color: #86efac;
+}
+
+.order-card .status.cancelled {
+  color: #f87171;
 }

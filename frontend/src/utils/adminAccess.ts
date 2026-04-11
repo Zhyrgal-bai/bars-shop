@@ -9,8 +9,10 @@ export function isAdminPanelVisible(): boolean {
   const tg = window.Telegram?.WebApp;
   const userId = tg?.initDataUnsafe?.user?.id;
 
+  console.log(typeof userId, userId);
+
   const rawAdminIds = import.meta.env.VITE_ADMIN_IDS;
-  const ADMIN_IDS = rawAdminIds
+  const ADMIN_IDS: number[] = rawAdminIds
     ? rawAdminIds.split(",").map((id) => Number(id.trim()))
     : [];
 

@@ -1,9 +1,10 @@
 import "dotenv/config";
 import { Telegraf } from "telegraf";
-import { getMemoryOrder, setMemoryOrderStatus } from "../server/memoryOrders.js";
+import {
+  getMemoryOrder,
+  setMemoryOrderStatus,
+} from "../server/memoryOrders.js";
 import { listPaymentDetails } from "../server/memoryPayments.js";
-
-const ADMIN_CHAT_ID = process.env.CHAT_ID;
 
 /** Если `CHAT_ID` в env нет — подставляется chat id из последнего `/start`. */
 let notifyFallbackChatId: number | undefined;
@@ -14,6 +15,22 @@ export function getNotifyTargetChatId(): string | number | undefined {
     return String(env).trim();
   }
   return notifyFallbackChatId;
+}
+
+/** Кнопки админа для нового in-memory заказа (создаётся из `POST /create-order`). */
+export function adminMemoryOrderInlineKeyboard(orderId: number) {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Принять", callback_data: `accept_${orderId}` },
+        { text: "❌ Отклонить", callback_data: `reject_${orderId}` },
+      ],
+      [
+        { text: "💰 Подтвердить оплату", callback_data: `confirm_${orderId}` },
+        { text: "🚚 Отправлено", callback_data: `ship_${orderId}` },
+      ],
+    ],
+  };
 }
 
 /** `new Telegraf(process.env.BOT_TOKEN)` — без токена не создаём */
@@ -33,21 +50,20 @@ function paidKeyboard(orderId: number) {
 async function sendPaymentDetailsToCustomer(
   telegram: Telegraf["telegram"],
   tgId: number,
-  orderId: number
+  orderId: number,
+  intro?: string
 ): Promise<void> {
   const details = listPaymentDetails();
-  const nonQr = details.filter(
-    (d) => d.type.toLowerCase() !== "qr"
-  );
-  const qrList = details.filter(
-    (d) => d.type.toLowerCase() === "qr"
-  );
+  const nonQr = details.filter((d) => d.type.toLowerCase() !== "qr");
+  const qrList = details.filter((d) => d.type.toLowerCase() === "qr");
 
-  const lines = nonQr.map(
-    (d) => `${d.type.toUpperCase()}: ${d.value}`
-  );
+  const lines = nonQr.map((d) => `${d.type.toUpperCase()}: ${d.value}`);
 
-  let text = `💳 Оплата заказа #${orderId}\n\n💳 Реквизиты:\n\n`;
+  let text = "";
+  if (intro != null && intro.trim() !== "") {
+    text += `${intro.trim()}\n\n`;
+  }
+  text += `💳 Оплата заказа #${orderId}\n\n💳 Реквизиты:\n\n`;
   if (lines.length > 0) {
     text += `${lines.join("\n")}\n\n`;
   } else if (qrList.length === 0) {
@@ -70,6 +86,14 @@ async function sendPaymentDetailsToCustomer(
       console.error("sendPhoto QR failed:", e);
     }
   }
+}
+
+function shipOnlyKeyboard(orderId: number) {
+  return {
+    inline_keyboard: [
+      [{ text: "🚚 Отправлено", callback_data: `ship_${orderId}` }],
+    ],
+  };
 }
 
 if (bot) {
@@ -111,7 +135,13 @@ if (bot) {
         return;
       }
 
-      const [action, orderIdStr] = data.split("_");
+      const underscore = data.indexOf("_");
+      if (underscore < 0) {
+        await ctx.answerCbQuery("Неверные данные");
+        return;
+      }
+      const action = data.slice(0, underscore);
+      const orderIdStr = data.slice(underscore + 1);
       const orderId = Number(orderIdStr);
 
       if (!orderIdStr || !Number.isFinite(orderId)) {
@@ -136,51 +166,45 @@ if (bot) {
 
         setMemoryOrderStatus(orderId, "ACCEPTED");
 
-        await ctx.editMessageText(
-          `🟢 Заказ #${orderId} ПРИНЯТ`,
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "❌ Завершить",
-                    callback_data: `done_${orderId}`,
-                  },
-                ],
-              ],
-            },
-          }
-        );
+        await ctx.editMessageText(`🟢 Заказ #${orderId} принят. Ожидаем оплату.`, {
+          reply_markup: { inline_keyboard: [] },
+        });
 
         const tgId = order.customerTelegramId;
         if (tgId != null) {
-          await sendPaymentDetailsToCustomer(ctx.telegram, tgId, orderId);
+          await sendPaymentDetailsToCustomer(
+            ctx.telegram,
+            tgId,
+            orderId,
+            "✅ Заказ принят. Оплатите по реквизитам:"
+          );
         }
 
         await ctx.answerCbQuery();
         return;
       }
 
-      // ---------- DONE (админ) ----------
-      if (action === "done") {
-        if (order.status === "DONE") {
-          await ctx.answerCbQuery("Уже обработано");
+      // ---------- SHIP (админ) + legacy done ----------
+      if (action === "ship" || action === "done") {
+        if (order.status === "SHIPPED") {
+          await ctx.answerCbQuery("Уже отправлено");
           return;
         }
-        if (order.status === "PAID_PENDING") {
-          await ctx.answerCbQuery("Сначала подтвердите или отклоните оплату");
-          return;
-        }
-        if (order.status !== "ACCEPTED" && order.status !== "CONFIRMED") {
-          await ctx.answerCbQuery("Сначала примите заказ");
+        if (order.status !== "CONFIRMED") {
+          await ctx.answerCbQuery("Сначала подтвердите оплату");
           return;
         }
 
-        setMemoryOrderStatus(orderId, "DONE");
+        setMemoryOrderStatus(orderId, "SHIPPED");
 
-        await ctx.editMessageText(`🔴 Заказ #${orderId} ЗАВЕРШЁН`, {
+        await ctx.editMessageText(`🚚 Заказ #${orderId} отправлен`, {
           reply_markup: { inline_keyboard: [] },
         });
+
+        const tgId = order.customerTelegramId;
+        if (tgId != null) {
+          await ctx.telegram.sendMessage(tgId, "🚚 Заказ отправлен");
+        }
 
         await ctx.answerCbQuery();
         return;
@@ -208,12 +232,15 @@ if (bot) {
           { reply_markup: { inline_keyboard: [] } }
         );
 
-        if (!ADMIN_CHAT_ID) {
-          console.error("CHAT_ID не задан — не удалось уведомить админа об оплате");
+        const adminChat = getNotifyTargetChatId();
+        if (adminChat == null) {
+          console.error(
+            "CHAT_ID не задан и не было /start — не удалось уведомить админа об оплате"
+          );
         } else {
           await ctx.telegram.sendMessage(
-            ADMIN_CHAT_ID,
-            `💰 Клиент оплатил\nЗаказ #${orderId}`,
+            adminChat,
+            `💳 Клиент оплатил заказ #${orderId}`,
             {
               reply_markup: {
                 inline_keyboard: [
@@ -240,24 +267,52 @@ if (bot) {
       // ---------- CONFIRM (админ) ----------
       if (action === "confirm") {
         if (order.status !== "PAID_PENDING") {
-          await ctx.answerCbQuery("Уже обработано");
+          await ctx.answerCbQuery(
+            order.status === "NEW"
+              ? "Сначала примите заказ и дождитесь оплаты"
+              : "Уже обработано"
+          );
           return;
         }
 
         setMemoryOrderStatus(orderId, "CONFIRMED");
 
-        await ctx.editMessageText(`🟢 Заказ #${orderId} ОПЛАЧЕН`, {
-          reply_markup: { inline_keyboard: [] },
+        await ctx.editMessageText(`🟢 Оплата подтверждена · заказ #${orderId}`, {
+          reply_markup: shipOnlyKeyboard(orderId),
         });
+
+        const tgId = order.customerTelegramId;
+        if (tgId != null) {
+          await ctx.telegram.sendMessage(tgId, "💰 Оплата подтверждена");
+        }
 
         await ctx.answerCbQuery();
         return;
       }
 
-      // ---------- REJECT (админ) ----------
+      // ---------- REJECT (админ): отмена NEW или отклонение оплаты ----------
       if (action === "reject") {
+        if (order.status === "NEW") {
+          setMemoryOrderStatus(orderId, "CANCELLED");
+
+          await ctx.editMessageText(`❌ Заказ #${orderId} отклонён`, {
+            reply_markup: { inline_keyboard: [] },
+          });
+
+          const tgId = order.customerTelegramId;
+          if (tgId != null) {
+            await ctx.telegram.sendMessage(
+              tgId,
+              "❌ Заказ отклонён администратором."
+            );
+          }
+
+          await ctx.answerCbQuery();
+          return;
+        }
+
         if (order.status !== "PAID_PENDING") {
-          await ctx.answerCbQuery("Уже обработано");
+          await ctx.answerCbQuery("Недоступно для этого статуса");
           return;
         }
 

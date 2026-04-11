@@ -10,12 +10,14 @@ import {
   isValidOrderStatus,
   listMemoryOrders,
   setMemoryOrderStatus,
+  type MemoryOrder,
   type MemoryOrderItem,
 } from "./memoryOrders.js";
-import { bot } from "../bot/bot.js";
-
-/** DEBUG: принудительный chat id — вернуть `process.env.CHAT_ID` после отладки */
-const CHAT_ID = 7633835337;
+import {
+  adminMemoryOrderInlineKeyboard,
+  bot,
+  getNotifyTargetChatId,
+} from "../bot/bot.js";
 import {
   addPaymentDetail,
   deletePaymentDetail,
@@ -29,9 +31,8 @@ import {
   tryApplyPromo,
 } from "./memoryPromos.js";
 
-console.log("BOT TOKEN:", process.env.BOT_TOKEN);
-console.log("CHAT ID env:", process.env.CHAT_ID);
-console.log("REAL CHAT ID USED:", CHAT_ID);
+console.log("BOT TOKEN:", process.env.BOT_TOKEN ? "set" : "missing");
+console.log("CHAT ID env:", process.env.CHAT_ID ?? "(empty)");
 
 type OrderTotalBody = {
   total?: unknown;
@@ -114,20 +115,22 @@ app.get("/", (req: Request, res: Response) => {
 
 app.get("/test-telegram", async (req: Request, res: Response) => {
   try {
-    console.log("TEST TELEGRAM START");
-
     if (!bot) {
-      throw new Error("BOT_UNDEFINED");
+      return res.status(500).json({ error: "BOT_UNDEFINED" });
     }
 
-    console.log("REAL CHAT ID USED:", CHAT_ID);
+    const target = getNotifyTargetChatId();
+    if (target == null) {
+      return res.status(400).json({
+        error:
+          "Задайте CHAT_ID в .env или откройте бота и отправьте /start, чтобы задать чат для уведомлений",
+      });
+    }
 
     const result = await bot.telegram.sendMessage(
-      CHAT_ID,
-      "TEST MESSAGE 🔥"
+      target,
+      "Проверка: сервер достучался до Telegram ✅"
     );
-
-    console.log("TELEGRAM RESULT:", result);
 
     res.json({ ok: true, result });
   } catch (e) {
@@ -334,10 +337,37 @@ app.post("/products", async (req: Request, res: Response) => {
   }
 });
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function formatMemoryOrderAdminHtml(order: MemoryOrder): string {
+  const itemLines = order.items.map((i) => {
+    const colorPart = i.color ? `, ${escapeHtml(String(i.color))}` : "";
+    const pricePart =
+      i.price != null && Number.isFinite(Number(i.price))
+        ? ` — ${escapeHtml(String(i.price))} ₸`
+        : "";
+    return `• ${escapeHtml(i.name)} (${escapeHtml(i.size)}${colorPart}) × ${Number(i.quantity)}${pricePart}`;
+  });
+  return (
+    `📦 <b>Новый заказ #${order.id}</b>\n\n` +
+    `👤 ${escapeHtml(order.name)}\n` +
+    `📞 ${escapeHtml(order.phone)}\n` +
+    `📍 ${escapeHtml(order.address)}\n\n` +
+    `<b>Товары:</b>\n${itemLines.join("\n")}\n\n` +
+    `<b>Итого:</b> ${escapeHtml(String(order.total))} ₸` +
+    (order.customerTelegramId != null
+      ? `\n🆔 Telegram: <code>${order.customerTelegramId}</code>`
+      : "")
+  );
+}
+
 // ================== IN-MEMORY ORDER SYSTEM ==================
 app.post("/create-order", async (req: Request, res: Response) => {
-  console.log("CHAT ID env:", process.env.CHAT_ID);
-  console.log("REAL CHAT ID USED:", CHAT_ID);
   console.log("ORDER DATA:", req.body);
 
   try {
@@ -406,11 +436,22 @@ app.post("/create-order", async (req: Request, res: Response) => {
         throw new Error("BOT_UNDEFINED: check BOT_TOKEN and import order (dotenv before bot)");
       }
 
-      console.log("REAL CHAT ID USED:", CHAT_ID);
-
-      await bot.telegram.sendMessage(CHAT_ID, "TEST MESSAGE 🔥");
-
-      console.log("✅ ORDER SENT SUCCESS");
+      const target = getNotifyTargetChatId();
+      if (target == null) {
+        console.error(
+          "Telegram: нет CHAT_ID в env и не задан fallback с /start — заказ не отправлен в чат"
+        );
+      } else {
+        await bot.telegram.sendMessage(
+          target,
+          formatMemoryOrderAdminHtml(order),
+          {
+            parse_mode: "HTML",
+            reply_markup: adminMemoryOrderInlineKeyboard(order.id),
+          }
+        );
+        console.log("✅ ORDER SENT TO ADMIN", order.id);
+      }
     } catch (error) {
       console.error("❌ TELEGRAM SEND ERROR:", error);
     }
@@ -462,10 +503,10 @@ app.post("/analytics", (req: Request, res: Response) => {
   const orders = listMemoryOrders();
   const totalOrders = orders.length;
   const totalRevenue = orders
-    .filter((o) => o.status === "CONFIRMED" || o.status === "DONE")
+    .filter((o) => o.status === "CONFIRMED" || o.status === "SHIPPED")
     .reduce((sum, o) => sum + Number(o.total), 0);
   const accepted = orders.filter((o) => o.status === "ACCEPTED").length;
-  const done = orders.filter((o) => o.status === "DONE").length;
+  const done = orders.filter((o) => o.status === "SHIPPED").length;
   res.json({ totalOrders, totalRevenue, accepted, done });
   } catch (e) {
     console.error("ANALYTICS ERROR:", e);
@@ -476,13 +517,18 @@ app.post("/analytics", (req: Request, res: Response) => {
 function orderStatusRu(status: string): string {
   const map: Record<string, string> = {
     new: "Новый",
+    NEW: "Новый",
+    ACCEPTED: "Принят",
+    PAID_PENDING: "Ожидает подтверждения оплаты",
+    CONFIRMED: "Оплачен",
+    SHIPPED: "Отправлен",
+    CANCELLED: "Отменён",
     processing: "В обработке",
     shipped: "Отправлен",
     delivered: "Доставлен",
     cancelled: "Отменён",
   };
-  const key = status.toLowerCase();
-  return map[key] ?? status;
+  return map[status] ?? map[status.toLowerCase()] ?? status;
 }
 
 // ================== GET PRODUCTS ==================
@@ -624,7 +670,7 @@ app.post("/orders", async (req: Request, res: Response) => {
         data: {
           userId: user.id,
           total: orderTotal,
-          status: "new",
+          status: "NEW",
           ...(customerPhone != null ? { customerPhone } : {}),
           items: {
             create: items.map((item) => ({

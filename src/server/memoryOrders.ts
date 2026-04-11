@@ -3,7 +3,8 @@ export type OrderStatus =
   | "ACCEPTED"
   | "PAID_PENDING"
   | "CONFIRMED"
-  | "DONE";
+  | "SHIPPED"
+  | "CANCELLED";
 
 export type MemoryOrderItem = {
   name: string;
@@ -35,7 +36,8 @@ const VALID_STATUSES: OrderStatus[] = [
   "ACCEPTED",
   "PAID_PENDING",
   "CONFIRMED",
-  "DONE",
+  "SHIPPED",
+  "CANCELLED",
 ];
 
 export function isValidOrderStatus(s: string): s is OrderStatus {
@@ -81,6 +83,7 @@ export function setMemoryOrderStatus(
   const o = getMemoryOrder(id);
   if (!o || !VALID_STATUSES.includes(status)) return undefined;
   o.status = status;
+  console.log("ORDER STATUS UPDATE:", id, status);
   return o;
 }
 

@@ -1,12 +1,24 @@
-const rawAdminIds = import.meta.env.VITE_ADMIN_IDS;
+/**
+ * Видимость админки: WebApp `initDataUnsafe.user.id` + `VITE_ADMIN_IDS`.
+ * Без VITE_ADMIN_ID, без process.env.
+ */
+export function isAdminPanelVisible(): boolean {
+  if (typeof window === "undefined") return false;
 
-const ADMIN_IDS = rawAdminIds
-  ? rawAdminIds.split(",").map((id) => Number(id.trim()))
-  : [];
+  // @ts-expect-error Telegram WebApp
+  const tg = window.Telegram?.WebApp;
+  const userId = tg?.initDataUnsafe?.user?.id;
 
-console.log("ADMIN IDS:", ADMIN_IDS);
+  const rawAdminIds = import.meta.env.VITE_ADMIN_IDS;
+  const ADMIN_IDS = rawAdminIds
+    ? rawAdminIds.split(",").map((id) => Number(id.trim()))
+    : [];
 
-export const isAdmin = (userId: unknown): boolean => {
+  const isAdmin = ADMIN_IDS.includes(Number(userId));
+
   console.log("USER ID:", userId);
-  return ADMIN_IDS.includes(Number(userId));
-};
+  console.log("ADMIN IDS:", ADMIN_IDS);
+  console.log("IS ADMIN:", isAdmin);
+
+  return isAdmin;
+}

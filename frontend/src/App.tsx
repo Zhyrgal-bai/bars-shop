@@ -10,8 +10,7 @@ import "./components/ui/Admin.css";
 import Header from "./components/layout/Header";
 import SideMenu from "./components/layout/SideMenu";
 import FloatingCart from "./components/layout/FloatingCart";
-import { isAdmin } from "./utils/adminAccess";
-import { getTelegramWebAppUserId } from "./utils/telegram";
+import { isAdminPanelVisible } from "./utils/adminAccess";
 
 export default function App() {
   const [page, setPage] = useState<
@@ -19,11 +18,7 @@ export default function App() {
   >("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const hasAdminAccess = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    const userId = getTelegramWebAppUserId();
-    return isAdmin(userId);
-  }, []);
+  const isAdmin = useMemo(() => isAdminPanelVisible(), []);
 
   const items = useCartStore((state) => state.items);
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
@@ -53,7 +48,7 @@ export default function App() {
         open={isMenuOpen}
         onClose={handleMenuClose}
         onNav={handleNav}
-        isAdmin={hasAdminAccess}
+        isAdmin={isAdmin}
       />
 
       <div className="content">
@@ -68,12 +63,14 @@ export default function App() {
             onOrderSuccess={() => setPage("home")}
           />
         )}
-        {page === "admin" && hasAdminAccess && <AdminPage />}
-        {page === "admin" && !hasAdminAccess && (
-          <div className="admin-page">
-            <div className="no-access">Нет прав</div>
-          </div>
-        )}
+        {page === "admin" &&
+          (isAdmin ? (
+            <AdminPage />
+          ) : (
+            <div className="admin-page">
+              <div className="no-access">Нет прав</div>
+            </div>
+          ))}
       </div>
 
       <FloatingCart

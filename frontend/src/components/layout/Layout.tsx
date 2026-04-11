@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Header from "./Header";
 import "./layout.css";
+import { isAdminPanelVisible } from "../../utils/adminAccess";
 
 type SideMenuProps = {
   open: boolean;
   onClose: () => void;
   onNav?: (page: "home" | "cart" | "admin") => void;
+  isAdmin?: boolean;
 };
 
-function SideMenu({ open, onClose, onNav }: SideMenuProps) {
+function SideMenu({ open, onClose, onNav, isAdmin = false }: SideMenuProps) {
   return (
     <>
       <div
@@ -19,7 +21,11 @@ function SideMenu({ open, onClose, onNav }: SideMenuProps) {
       <nav className={`side-menu${open ? " open" : ""}`}>
         <button onClick={() => onNav?.("home")}>Главная</button>
         <button onClick={() => onNav?.("cart")}>Корзина</button>
-        <button onClick={() => onNav?.("admin")}>Админка</button>
+        {isAdmin && (
+          <button type="button" onClick={() => onNav?.("admin")}>
+            Админка
+          </button>
+        )}
       </nav>
     </>
   );
@@ -31,6 +37,7 @@ type Props = {
 
 export default function Layout({ children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = useMemo(() => isAdminPanelVisible(), []);
 
   // Add animation class for open menu, e.g., "menu-open"
   const appClassName = `app${menuOpen ? " menu-open" : ""}`;
@@ -46,7 +53,7 @@ export default function Layout({ children }: Props) {
       <Header onMenuToggle={handleMenuToggle} />
       {/* SideMenu receives open and onClose;
           onNav is optional and not supplied here */}
-      <SideMenu open={menuOpen} onClose={handleMenuClose} />
+      <SideMenu open={menuOpen} onClose={handleMenuClose} isAdmin={isAdmin} />
       {/* Overlay to capture clicks and close menu */}
       {menuOpen && (
         <div

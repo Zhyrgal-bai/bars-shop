@@ -270,12 +270,4 @@ if (bot) {
       }
     }
   });
-
-  tgBot
-    .launch()
-    .then(() => console.log("🤖 Bot started"))
-    .catch((err) => console.error("Bot launch error:", err));
-
-  process.once("SIGINT", () => tgBot.stop("SIGINT"));
-  process.once("SIGTERM", () => tgBot.stop("SIGTERM"));
 }

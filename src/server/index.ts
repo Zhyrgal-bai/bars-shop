@@ -87,6 +87,22 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+const TELEGRAM_WEBHOOK_URL =
+  "https://bars-shop.onrender.com/telegram-webhook";
+
+app.post("/telegram-webhook", async (req: Request, res: Response) => {
+  if (!bot) {
+    return res.sendStatus(503);
+  }
+  try {
+    await bot.handleUpdate(req.body);
+    return res.sendStatus(200);
+  } catch (e) {
+    console.error("telegram-webhook:", e);
+    return res.sendStatus(500);
+  }
+});
+
 // ================== ROOT ==================
 app.get("/", (req: Request, res: Response) => {
   res.send("Server is working 🚀");
@@ -745,4 +761,11 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
+
+  if (bot) {
+    bot.telegram
+      .setWebhook(TELEGRAM_WEBHOOK_URL)
+      .then(() => console.log("Webhook set:", TELEGRAM_WEBHOOK_URL))
+      .catch((err) => console.error("Webhook error:", err));
+  }
 });

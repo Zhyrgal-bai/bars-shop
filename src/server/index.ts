@@ -26,7 +26,8 @@ import {
   tryApplyPromo,
 } from "./memoryPromos.js";
 
-console.log("CHAT_ID:", process.env.CHAT_ID);
+console.log("BOT TOKEN:", process.env.BOT_TOKEN);
+console.log("CHAT ID:", process.env.CHAT_ID);
 
 type OrderTotalBody = {
   total?: unknown;
@@ -93,19 +94,23 @@ app.get("/", (req: Request, res: Response) => {
 
 app.get("/test-telegram", async (req: Request, res: Response) => {
   try {
-    if (!bot || !process.env.CHAT_ID) {
-      return res
-        .status(500)
-        .json({ error: "Bot or CHAT_ID missing", ok: false });
+    console.log("TEST TELEGRAM START");
+
+    if (!bot) {
+      throw new Error("BOT_UNDEFINED");
     }
-    await bot.telegram.sendMessage(
+
+    const result = await bot.telegram.sendMessage(
       String(process.env.CHAT_ID),
-      "TEST MESSAGE ✅"
+      "TEST MESSAGE 🔥"
     );
-    res.json({ ok: true });
+
+    console.log("TELEGRAM RESULT:", result);
+
+    res.json({ ok: true, result });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Telegram failed" });
+    console.error("TELEGRAM ERROR FULL:", e);
+    res.status(500).json({ error: String(e) });
   }
 });
 

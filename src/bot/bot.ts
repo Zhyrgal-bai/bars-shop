@@ -6,8 +6,19 @@ import { listPaymentDetails } from "../server/memoryPayments.js";
 const botToken = process.env.BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.CHAT_ID;
 
-/** `new Telegraf(BOT_TOKEN)` — без токена экземпляр не создаём */
+/** `new Telegraf(process.env.BOT_TOKEN)` — без токена экземпляр не создаём */
 export const bot = botToken ? new Telegraf(botToken) : undefined;
+
+if (bot) {
+  bot.telegram
+    .getMe()
+    .then((info) => {
+      console.log("BOT INFO:", info);
+    })
+    .catch((err) => {
+      console.error("BOT ERROR:", err);
+    });
+}
 
 function paidKeyboard(orderId: number) {
   return {

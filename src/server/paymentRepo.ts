@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PaymentSettings, PrismaClient } from "@prisma/client";
 
 export type PaymentDetailRecord = {
   id: number;
@@ -64,7 +64,7 @@ export async function listPaymentDetailsFromDb(
 export async function upsertPaymentSettings(
   client: PrismaClient,
   body: Record<string, unknown>
-): Promise<void> {
+): Promise<PaymentSettings> {
   const data = {
     mbank: strOrNull(body.mbank),
     optima: strOrNull(body.optima),
@@ -72,7 +72,7 @@ export async function upsertPaymentSettings(
     card: strOrNull(body.card),
     qr: strOrNull(body.qr),
   };
-  await client.paymentSettings.upsert({
+  return client.paymentSettings.upsert({
     where: { id: 1 },
     create: { id: 1, ...data },
     update: data,

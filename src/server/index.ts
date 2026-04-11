@@ -162,8 +162,10 @@ app.post("/payment", async (req: Request, res: Response) => {
   if (!denyIfNotAdmin(req, res)) return;
   try {
     console.log("PAYMENT SAVE:", req.body);
-    await upsertPaymentSettings(prisma, req.body as Record<string, unknown>);
-    const saved = await prisma.paymentSettings.findUnique({ where: { id: 1 } });
+    const saved = await upsertPaymentSettings(
+      prisma,
+      req.body as Record<string, unknown>
+    );
     res.json(saved);
   } catch (e) {
     console.error("PAYMENT ERROR:", e);

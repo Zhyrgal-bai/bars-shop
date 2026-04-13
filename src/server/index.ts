@@ -28,6 +28,7 @@ import {
   listPromosFromDb,
   tryApplyPromoDb,
 } from "./promoRepo.js";
+import { notifyAfterOrderStatusChangeFromApi } from "./orderTelegramNotify.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -506,6 +507,17 @@ async function performOrderStatusUpdate(
       where: { id: orderId },
       data: { status: st },
     });
+    const withUser = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { user: true },
+    });
+    if (withUser) {
+      void notifyAfterOrderStatusChangeFromApi({
+        id: withUser.id,
+        status: withUser.status,
+        user: { telegramId: withUser.user.telegramId },
+      });
+    }
     return { ok: true, body: updated };
   } catch (e) {
     if (
@@ -768,6 +780,7 @@ async function notifyAdminNewOrderTelegram(input: {
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
+          reply_markup: adminOrderInlineKeyboard(input.orderId),
         }),
       }
     );

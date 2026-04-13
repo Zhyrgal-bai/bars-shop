@@ -37,17 +37,33 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
+  const goAdminSection = (
+    section: "orders" | "products" | "analytics" | "settings"
+  ) => {
+    const paths: Record<typeof section, string> = {
+      orders: "#/admin/orders",
+      products: "#/admin/products",
+      analytics: "#/admin/analytics",
+      settings: "#/admin/settings",
+    };
+    window.location.hash = paths[section];
+    setPage("admin");
+    setIsMenuOpen(false);
+  };
+
   return (
     <div className="app">
-      <Header onMenuToggle={handleMenuToggle} />
+      <Header menuOpen={isMenuOpen} onMenuToggle={handleMenuToggle} />
 
       <SideMenu
         open={isMenuOpen}
         onClose={handleMenuClose}
-        onNav={handleNav}
+        currentPage={page}
+        onNavToHome={() => handleNav("home")}
+        onNavToAdmin={goAdminSection}
       />
 
-      <div className="content">
+      <div className="content app__content">
         {page === "home" && <HomePage />}
         {page === "faq" && <FAQPage />}
         {page === "cart" && (

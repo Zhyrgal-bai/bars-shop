@@ -21,7 +21,7 @@ export function adminOrderInlineKeyboard(orderId: number) {
     inline_keyboard: [
       [
         { text: "✅ Принять", callback_data: `accept_${orderId}` },
-        { text: "❌ Отклонить", callback_data: `reject_${orderId}` },
+        { text: "❌ Отклонить", callback_data: `cancel_${orderId}` },
       ],
       [
         { text: "💰 Подтвердить оплату", callback_data: `confirm_${orderId}` },
@@ -195,15 +195,16 @@ if (bot) {
 
         const tgId = order.customerTelegramId;
         if (tgId != null && Number.isFinite(tgId)) {
+          await ctx.telegram.sendMessage(tgId, "Заказ принят");
           await sendPaymentDetailsToCustomer(
             ctx.telegram,
             tgId,
             orderId,
-            "✅ Заказ принят. Оплатите по реквизитам:"
+            "Оплатите по реквизитам:"
           );
         }
 
-        await ctx.answerCbQuery();
+        await ctx.answerCbQuery("Обновлено ✅");
         return;
       }
 
@@ -226,10 +227,10 @@ if (bot) {
 
         const tgId = order.customerTelegramId;
         if (tgId != null && Number.isFinite(tgId)) {
-          await ctx.telegram.sendMessage(tgId, "🚚 Заказ отправлен");
+          await ctx.telegram.sendMessage(tgId, "Отправлено");
         }
 
-        await ctx.answerCbQuery();
+        await ctx.answerCbQuery("Обновлено ✅");
         return;
       }
 
@@ -274,7 +275,7 @@ if (bot) {
                     },
                     {
                       text: "❌ Отклонить",
-                      callback_data: `reject_${orderId}`,
+                      callback_data: `cancel_${orderId}`,
                     },
                   ],
                 ],
@@ -283,7 +284,7 @@ if (bot) {
           );
         }
 
-        await ctx.answerCbQuery();
+        await ctx.answerCbQuery("Обновлено ✅");
         return;
       }
 
@@ -306,15 +307,15 @@ if (bot) {
 
         const tgId = order.customerTelegramId;
         if (tgId != null && Number.isFinite(tgId)) {
-          await ctx.telegram.sendMessage(tgId, "💰 Оплата подтверждена");
+          await ctx.telegram.sendMessage(tgId, "Оплата подтверждена");
         }
 
-        await ctx.answerCbQuery();
+        await ctx.answerCbQuery("Обновлено ✅");
         return;
       }
 
-      // ---------- REJECT (админ): отмена NEW или отклонение оплаты ----------
-      if (action === "reject") {
+      // ---------- CANCEL / REJECT (админ): отмена NEW или отклонение оплаты ----------
+      if (action === "reject" || action === "cancel") {
         if (order.status === "NEW") {
           await updateOrderStatusInDb(orderId, "CANCELLED");
 
@@ -330,7 +331,7 @@ if (bot) {
             );
           }
 
-          await ctx.answerCbQuery();
+          await ctx.answerCbQuery("Обновлено ✅");
           return;
         }
 
@@ -350,7 +351,7 @@ if (bot) {
           await sendPaymentDetailsToCustomer(ctx.telegram, tgId, orderId);
         }
 
-        await ctx.answerCbQuery();
+        await ctx.answerCbQuery("Обновлено ✅");
         return;
       }
 

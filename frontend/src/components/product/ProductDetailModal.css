@@ -67,11 +67,66 @@
   background: rgba(0, 0, 0, 0.25);
 }
 
+.pdm-gallery-swipe {
+  touch-action: pan-y;
+}
+
 .pdm-gallery img {
   display: block;
   width: 100%;
   height: min(52vh, 280px);
   object-fit: cover;
+}
+
+.pdm-gallery-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: min(52vh, 280px);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+}
+
+.pdm-gallery-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.5);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.pdm-gallery-nav:hover {
+  background: rgba(248, 113, 113, 0.7);
+}
+
+.pdm-gallery-nav:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.pdm-gallery-nav--left {
+  left: 10px;
+}
+
+.pdm-gallery-nav--right {
+  right: 10px;
 }
 
 .pdm-dots {
@@ -196,4 +251,17 @@
   color: rgba(255, 255, 255, 0.4);
   font-style: italic;
   border-style: dashed;
+}
+
+@media (max-width: 480px) {
+  .pdm-panel {
+    width: min(100%, 96vw);
+    padding: 14px 14px 18px;
+  }
+
+  .pdm-gallery-nav {
+    width: 32px;
+    height: 32px;
+    font-size: 1.55rem;
+  }
 }

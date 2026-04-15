@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Product } from "../../types";
 import {
@@ -20,6 +20,7 @@ export default function ProductDetailModal({
 }: ProductDetailModalProps) {
   const open = product != null;
   const [imgIndex, setImgIndex] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
 
   const images = useMemo(
     () => (product ? getProductImages(product) : []),
@@ -57,6 +58,17 @@ export default function ProductDetailModal({
   const effective = product ? getEffectivePrice(product) : 0;
 
   const heroSrc = images[Math.min(imgIndex, Math.max(0, images.length - 1))];
+  const hasImages = images.length > 0;
+
+  const goPrevImage = () => {
+    if (images.length <= 1) return;
+    setImgIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goNextImage = () => {
+    if (images.length <= 1) return;
+    setImgIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
 
   return (
     <AnimatePresence>
@@ -93,10 +105,61 @@ export default function ProductDetailModal({
             </button>
 
             <div className="pdm-gallery">
-              {heroSrc ? <img src={heroSrc} alt="" /> : null}
+              {heroSrc ? (
+                <>
+                  <div
+                    className="pdm-gallery-swipe"
+                    onTouchStart={(e) => {
+                      touchStartXRef.current = e.touches[0]?.clientX ?? null;
+                    }}
+                    onTouchEnd={(e) => {
+                      if (touchStartXRef.current == null || images.length <= 1) return;
+                      const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+                      const delta = touchStartXRef.current - endX;
+                      if (delta > 50) goNextImage();
+                      if (delta < -50) goPrevImage();
+                      touchStartXRef.current = null;
+                    }}
+                  >
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.img
+                        key={heroSrc}
+                        src={heroSrc}
+                        alt={product.name}
+                        initial={{ opacity: 0, x: 18 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -18 }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      />
+                    </AnimatePresence>
+                  </div>
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        className="pdm-gallery-nav pdm-gallery-nav--left"
+                        onClick={goPrevImage}
+                        aria-label="Предыдущее фото"
+                      >
+                        &#x2039;
+                      </button>
+                      <button
+                        type="button"
+                        className="pdm-gallery-nav pdm-gallery-nav--right"
+                        onClick={goNextImage}
+                        aria-label="Следующее фото"
+                      >
+                        &#x203A;
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="pdm-gallery-placeholder">Нет фото</div>
+              )}
             </div>
 
-            {images.length > 1 && (
+            {hasImages && (
               <div className="pdm-dots" role="tablist" aria-label="Фото">
                 {images.map((_, i) => (
                   <button

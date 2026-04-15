@@ -8,7 +8,12 @@ import {
   isCloudinaryConfigured,
   uploadImageToCloudinary,
 } from "./cloudinary.js";
-import { denyIfNotAdmin, denyIfNotAdminQuery, isAdmin } from "./adminAuth.js";
+import {
+  adminUserIdFromRequest,
+  denyIfNotAdmin,
+  denyIfNotAdminQuery,
+  isAdmin,
+} from "./adminAuth.js";
 import { isValidOrderStatus, type OrderStatus } from "./orderStatus.js";
 import {
   adminNewOrderNotifyKeyboard,
@@ -29,6 +34,7 @@ import {
   tryApplyPromoDb,
 } from "./promoRepo.js";
 import { notifyAfterOrderStatusChangeFromApi } from "./orderTelegramNotify.js";
+import { cleanInput, validateKgPhone } from "./orderInputSanitize.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -196,8 +202,7 @@ app.get("/test-telegram", async (req: Request, res: Response) => {
 
 // ================== CHECK ADMIN ==================
 app.post("/check-admin", (req: Request, res: Response) => {
-  const { userId } = req.body as { userId?: unknown };
-  res.json({ isAdmin: isAdmin(userId) });
+  res.json({ isAdmin: isAdmin(adminUserIdFromRequest(req)) });
 });
 
 // ================== UPLOAD (Cloudinary, admin) ==================
@@ -890,13 +895,27 @@ app.post("/orders", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Неверные данные заказа" });
   }
 
+  const phoneRaw = String((body as { phone?: unknown }).phone ?? "").trim();
+  if (phoneRaw.length > 13) {
+    return res.status(400).json({ error: "Неверный номер телефона" });
+  }
+  if (!validateKgPhone(phoneRaw)) {
+    return res.status(400).json({ error: "Неверный номер телефона" });
+  }
+  const customerPhoneValue = phoneRaw;
+
+  const userNameSanitized = cleanInput(
+    (body as { user?: { name?: unknown } }).user?.name
+  );
+  const addressSanitized = cleanInput((body as { address?: unknown }).address);
+
   const totalComputed = await computeOrderTotalFromBody(body);
   if (!totalComputed.ok) {
     return res.status(400).json({ error: totalComputed.error });
   }
   const orderTotal = totalComputed.orderTotal;
 
-  const items = body.items as Array<{
+  const rawItems = body.items as Array<{
     productId: number;
     name: string;
     size: string;
@@ -905,9 +924,19 @@ app.post("/orders", async (req: Request, res: Response) => {
     price: number;
   }>;
 
-  if (!Array.isArray(items) || items.length === 0) {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
     return res.status(400).json({ error: "Корзина пуста" });
   }
+
+  const items = rawItems.map((item) => ({
+    ...item,
+    name: cleanInput(item.name),
+    size: cleanInput(item.size),
+    color: cleanInput(item.color),
+    quantity: Number(item.quantity),
+    price: Number(item.price),
+    productId: Number(item.productId),
+  }));
 
   try {
     const { order, user } = await prisma.$transaction(async (tx) => {
@@ -919,7 +948,7 @@ app.post("/orders", async (req: Request, res: Response) => {
         user = await tx.user.create({
           data: {
             telegramId: BigInt(body.user.telegramId),
-            name: body.user.name,
+            name: userNameSanitized || null,
           },
         });
       }
@@ -962,18 +991,12 @@ app.post("/orders", async (req: Request, res: Response) => {
         );
       }
 
-      const phoneRaw = (body as { phone?: unknown }).phone;
-      const customerPhone =
-        phoneRaw != null && String(phoneRaw).trim() !== ""
-          ? String(phoneRaw).trim()
-          : null;
-
       const order = await tx.order.create({
         data: {
           userId: user.id,
           total: orderTotal,
           status: "NEW",
-          ...(customerPhone != null ? { customerPhone } : {}),
+          customerPhone: customerPhoneValue,
           items: {
             create: items.map((item) => ({
               productId: Number(item.productId),
@@ -995,21 +1018,11 @@ app.post("/orders", async (req: Request, res: Response) => {
 
     console.log("ORDER CREATED:", order);
 
-    const bodyAddr = (body as { address?: unknown }).address;
     const address =
-      bodyAddr != null && String(bodyAddr).trim() !== ""
-        ? String(bodyAddr).trim()
-        : "—";
+      addressSanitized !== "" ? addressSanitized : "—";
     const displayName =
-      user.name?.trim() ||
-      String(
-        (body as { user?: { name?: string } }).user?.name ?? ""
-      ).trim() ||
-      "Гость";
-    const phone =
-      order.customerPhone?.trim() ||
-      String((body as { phone?: unknown }).phone ?? "").trim() ||
-      "—";
+      user.name?.trim() || userNameSanitized || "Гость";
+    const phone = order.customerPhone?.trim() || customerPhoneValue || "—";
 
     void notifyAdminNewOrderTelegram({
       orderId: order.id,

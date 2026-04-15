@@ -2,9 +2,10 @@ import HomePage from "./pages/HomePage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import AdminApp from "./pages/admin/AdminApp";
-import FAQPage from "./pages/FAQPage";
+import FAQ from "./pages/FAQ";
 import MyOrders from "./pages/MyOrders";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useCartStore } from "./store/useCartStore";
 import { isAdminPanelVisible } from "@/utils/admin";
 import "./App.css";
@@ -12,28 +13,67 @@ import "./components/ui/Admin.css";
 import Header from "./components/layout/Header";
 import SideMenu from "./components/layout/SideMenu";
 import FloatingCart from "./components/layout/FloatingCart";
+
+type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
+
+function initialPageFromPath(): AppNavPage {
+  if (typeof window === "undefined") return "home";
+  return window.location.pathname === "/faq" ? "faq" : "home";
+}
+
 export default function App() {
-  const [page, setPage] = useState<
-    "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders"
-  >("home");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [page, setPage] = useState<AppNavPage>(initialPageFromPath);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const items = useCartStore((state) => state.items);
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
 
+  const commitPage = useCallback(
+    (next: AppNavPage) => {
+      if (next === "faq") {
+        navigate("/faq");
+        setPage("faq");
+        return;
+      }
+      setPage(next);
+      if (location.pathname === "/faq") {
+        navigate("/", { replace: true });
+      }
+    },
+    [navigate, location.pathname]
+  );
+
+  useEffect(() => {
+    if (location.pathname === "/faq") {
+      setPage("faq");
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const onPop = () => {
+      queueMicrotask(() => {
+        if (window.location.pathname !== "/faq") {
+          setPage((p) => (p === "faq" ? "home" : p));
+        }
+      });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const handleMenuToggle = () => setIsMenuOpen((prev) => !prev);
   const handleMenuClose = () => setIsMenuOpen(false);
 
-  const handleNav = (
-    target: "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders"
-  ) => {
-    setPage(target);
+  const handleNav = (target: AppNavPage) => {
+    commitPage(target);
     setIsMenuOpen(false);
   };
 
   const handleFloatingCartClick = () => {
     if (page !== "cart") {
-      setPage("cart");
+      commitPage("cart");
     }
     setIsMenuOpen(false);
   };
@@ -41,6 +81,10 @@ export default function App() {
   const goAdminSection = (
     section: "orders" | "products" | "analytics" | "settings"
   ) => {
+    setPage("admin");
+    if (location.pathname === "/faq") {
+      navigate("/", { replace: true });
+    }
     const paths: Record<typeof section, string> = {
       orders: "#/admin/orders",
       products: "#/admin/products",
@@ -48,7 +92,6 @@ export default function App() {
       settings: "#/admin/settings",
     };
     window.location.hash = paths[section];
-    setPage("admin");
     setIsMenuOpen(false);
   };
 
@@ -62,25 +105,26 @@ export default function App() {
         currentPage={page}
         onNavToHome={() => handleNav("home")}
         onNavToMyOrders={() => handleNav("my-orders")}
+        onNavToFaq={() => handleNav("faq")}
         onNavToAdmin={goAdminSection}
       />
 
       <div className="content app__content">
         {page === "home" && <HomePage />}
-        {page === "faq" && <FAQPage />}
+        {page === "faq" && <FAQ />}
         {page === "my-orders" && <MyOrders />}
         {page === "cart" && (
-          <CartPage onGoToCheckout={() => setPage("checkout")} />
+          <CartPage onGoToCheckout={() => commitPage("checkout")} />
         )}
         {page === "checkout" && (
           <CheckoutPage
-            onBack={() => setPage("cart")}
-            onOrderSuccess={() => setPage("home")}
+            onBack={() => commitPage("cart")}
+            onOrderSuccess={() => commitPage("home")}
           />
         )}
         {page === "admin" &&
           (isAdminPanelVisible() ? (
-            <AdminApp onExit={() => setPage("home")} />
+            <AdminApp onExit={() => commitPage("home")} />
           ) : (
             <div className="admin-page">
               <div className="no-access">Нет прав</div>

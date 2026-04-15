@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useCartStore } from "../store/useCartStore";
 import { api } from "../services/api";
+import { fetchMyOrders } from "../services/myOrdersApi";
 import { getTelegramUser, getTelegramWebAppUserId } from "../utils/telegram";
+import { cleanInput, validateKgPhone } from "../utils/orderInputSanitize";
 import "../components/ui/CheckoutPage.css";
 
 type Props = {
@@ -46,6 +48,8 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
   const [promo, setPromo] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  /** Телефон уже был в прошлом заказе — поле ввода не показываем */
+  const [phoneFromSavedOrder, setPhoneFromSavedOrder] = useState(false);
   const [promoPreview, setPromoPreview] = useState<{
     newTotal: number;
     discount: number;
@@ -61,8 +65,32 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
     setPromoPreview(null);
   }, [totalPrice]);
 
+  useEffect(() => {
+    const uid = getTelegramWebAppUserId();
+    if (!Number.isFinite(uid) || uid <= 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await fetchMyOrders(uid);
+        const saved = rows.find(
+          (o) => o.customerPhone != null && String(o.customerPhone).trim() !== ""
+        )?.customerPhone;
+        const trimmed = saved != null ? String(saved).trim() : "";
+        if (!cancelled && trimmed !== "") {
+          setPhone(trimmed);
+          setPhoneFromSavedOrder(true);
+        }
+      } catch {
+        /* не блокируем оформление */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const applyPromoCode = async (): Promise<number | null> => {
-    const code = promo.trim();
+    const code = cleanInput(promo);
     if (!code) {
       setPromoPreview(null);
       return totalPrice;
@@ -108,15 +136,27 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
 
   const handleSubmit = async () => {
     if (items.length === 0) return;
-    if (!name.trim() || !phone.trim()) {
-      alert("Укажите имя и телефон");
+    if (!name.trim()) {
+      alert("Укажите имя");
+      return;
+    }
+    if (!phone.trim()) {
+      alert("Укажите номер телефона");
+      return;
+    }
+    const phoneTrimmed = phone.trim();
+    if (!validateKgPhone(phoneTrimmed)) {
+      alert("Введите правильный номер: +996XXXXXXXXX или 0556XXXXXX");
+      if (phoneFromSavedOrder) {
+        setPhoneFromSavedOrder(false);
+      }
       return;
     }
 
     const tg = getTelegramUser();
     const uid = getTelegramWebAppUserId();
     const userId = Number.isFinite(uid) ? uid : Number(tg?.id);
-    const promoCode = promo.trim();
+    const promoCode = cleanInput(promo);
 
     let payTotal = totalPrice;
     if (promoCode) {
@@ -127,10 +167,16 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
       setPromoPreview(null);
     }
 
+    const nameClean = cleanInput(name);
+    const addressClean = cleanInput(address);
+    const commentClean = cleanInput(comment);
+    const displayName =
+      nameClean || (tg?.first_name ? cleanInput(tg.first_name) : "") || "Гость";
+
     const orderData = {
-      name: name.trim(),
-      phone: phone.trim(),
-      address: address.trim(),
+      name: displayName,
+      phone: phoneTrimmed,
+      address: addressClean,
       items: items.map((i) => ({
         name: i.name,
         size: i.size,
@@ -145,7 +191,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
         ...(Number.isFinite(userId) ? { userId } : {}),
         user: {
           telegramId: Number.isFinite(Number(tg?.id)) ? Number(tg?.id) : 0,
-          name: orderData.name || tg?.first_name || "Гость",
+          name: orderData.name || "Гость",
         },
         phone: orderData.phone,
         items: items.map((i) => ({
@@ -161,7 +207,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
         deliveryType,
         address: orderData.address,
         promo: promoCode,
-        comment: comment.trim(),
+        comment: commentClean,
       });
 
       alert("Заказ отправлен");
@@ -169,6 +215,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
       clearCart();
       setName("");
       setPhone("");
+      setPhoneFromSavedOrder(false);
       setAddress("");
       setPromo("");
       setComment("");
@@ -214,12 +261,15 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <input
-          placeholder="+996 XXX XXX XXX"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          inputMode="tel"
-        />
+        {!phoneFromSavedOrder && (
+          <input
+            placeholder="Введите номер телефона"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            inputMode="tel"
+            autoComplete="tel"
+          />
+        )}
         <input
           placeholder="Адрес доставки"
           value={address}

@@ -21,6 +21,8 @@ interface TelegramWebApp {
     hash?: string;
   };
   ready: () => void;
+  /** Opens `https://t.me/...` inside Telegram when available */
+  openTelegramLink?: (url: string) => void;
 }
 
 interface ImportMetaEnv {

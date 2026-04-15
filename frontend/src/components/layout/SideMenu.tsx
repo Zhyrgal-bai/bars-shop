@@ -8,6 +8,8 @@ import {
 } from "../../utils/telegramUserMark";
 import "./bars-shell.css";
 
+const SUPPORT_BOT_URL = "https://t.me/coffee_market_test_bot";
+
 type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
 
 type AdminSection = "orders" | "products" | "analytics" | "settings";
@@ -18,6 +20,7 @@ type SideMenuProps = {
   currentPage: AppNavPage;
   onNavToHome: () => void;
   onNavToMyOrders: () => void;
+  onNavToFaq: () => void;
   onNavToAdmin: (section: AdminSection) => void;
 };
 
@@ -45,8 +48,8 @@ const ADMIN_LINKS: {
   icon: string;
   label: string;
 }[] = [
-  { section: "orders", hash: "#/admin/orders", icon: "📦", label: "Заказы" },
-  { section: "products", hash: "#/admin/products", icon: "🛍", label: "Товары" },
+  { section: "orders", hash: "#/admin/orders", icon: "🗂️", label: "Заказы" },
+  { section: "products", hash: "#/admin/products", icon: "🏷️", label: "Товары" },
   { section: "analytics", hash: "#/admin/analytics", icon: "📊", label: "Аналитика" },
   { section: "settings", hash: "#/admin/settings", icon: "⚙", label: "Настройки" },
 ];
@@ -57,6 +60,7 @@ export default function SideMenu({
   currentPage,
   onNavToHome,
   onNavToMyOrders,
+  onNavToFaq,
   onNavToAdmin,
 }: SideMenuProps) {
   const hash = useSyncExternalStore(subscribeHash, readHash, () => "");
@@ -75,6 +79,12 @@ export default function SideMenu({
 
   const homeActive = currentPage === "home";
   const myOrdersActive = currentPage === "my-orders";
+  const faqActive = currentPage === "faq";
+
+  const openSupport = () => {
+    window.open(SUPPORT_BOT_URL, "_blank", "noopener,noreferrer");
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -128,20 +138,6 @@ export default function SideMenu({
               <nav className="bars-drawer__nav" aria-label="Разделы">
                 <button
                   type="button"
-                  className={`bars-drawer__link${homeActive ? " bars-drawer__link--active" : ""}`}
-                  onClick={() => {
-                    onNavToHome();
-                    onClose();
-                  }}
-                >
-                  <span className="bars-drawer__link-icon" aria-hidden>
-                    🏠
-                  </span>
-                  Магазин
-                </button>
-
-                <button
-                  type="button"
                   className={`bars-drawer__link${myOrdersActive ? " bars-drawer__link--active" : ""}`}
                   onClick={() => {
                     onNavToMyOrders();
@@ -149,9 +145,23 @@ export default function SideMenu({
                   }}
                 >
                   <span className="bars-drawer__link-icon" aria-hidden>
-                    📋
+                    📦
                   </span>
                   Мои заказы
+                </button>
+
+                <button
+                  type="button"
+                  className={`bars-drawer__link${homeActive ? " bars-drawer__link--active" : ""}`}
+                  onClick={() => {
+                    onNavToHome();
+                    onClose();
+                  }}
+                >
+                  <span className="bars-drawer__link-icon" aria-hidden>
+                    🛍
+                  </span>
+                  Магазин
                 </button>
 
                 {admin && (
@@ -179,6 +189,29 @@ export default function SideMenu({
                     })}
                   </>
                 )}
+
+                <div className="bars-drawer__divider" aria-hidden />
+
+                <button
+                  type="button"
+                  className={`bars-drawer__link${faqActive ? " bars-drawer__link--active" : ""}`}
+                  onClick={() => {
+                    onNavToFaq();
+                    onClose();
+                  }}
+                >
+                  <span className="bars-drawer__link-icon" aria-hidden>
+                    ❓
+                  </span>
+                  FAQ
+                </button>
+
+                <button type="button" className="bars-drawer__link" onClick={openSupport}>
+                  <span className="bars-drawer__link-icon" aria-hidden>
+                    💬
+                  </span>
+                  Поддержка
+                </button>
               </nav>
             </div>
 

@@ -4,6 +4,74 @@
   padding: 0 16px;
 }
 
+/* Первый заказ: скидка */
+.home-discount-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(
+    125deg,
+    rgba(220, 38, 38, 0.22) 0%,
+    rgba(15, 23, 42, 0.75) 55%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-discount-banner:active {
+  transform: scale(0.99);
+}
+
+.home-discount-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-discount-banner__title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.home-discount-banner__promo {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.home-discount-banner__promo strong {
+  color: #fecaca;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.home-discount-banner__copy {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(220, 38, 38, 0.85);
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.home-discount-banner__copy:active {
+  opacity: 0.88;
+}
+
 /* HERO */
 .hero {
   padding: 2px 0;
@@ -107,3 +175,5 @@
   background: rgba(255, 45, 45, 0.2);
   color: #ff2d2d;
 }
+
+ /* ввод поиска */  

@@ -1,25 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../services/api";
+import { fetchMyOrders } from "../services/myOrdersApi";
 import { getWebAppUserId } from "../utils/adminAccess";
 import { mbankOrderQrImageUrl } from "../utils/mbankQrUrl";
+import type { MyOrderRow } from "../types/myOrder";
 import "./MyOrders.css";
 
-export type MyOrderRow = {
-  id: number;
-  userId: number;
-  total: number;
-  status: string;
-  tracking?: string | null;
-  customerPhone?: string | null;
-  items?: {
-    id: number;
-    name: string;
-    size: string;
-    color: string;
-    quantity: number;
-    price: number;
-  }[];
-};
+export type { MyOrderRow };
 
 function statusWithIcon(status: string): string {
   const u = status.toUpperCase();
@@ -32,6 +18,31 @@ function statusWithIcon(status: string): string {
     CANCELLED: "❌ Отменён",
   };
   return map[u] ?? status;
+}
+
+function orderStatusProgress(status: string): number {
+  const u = status.toUpperCase();
+  const map: Record<string, number> = {
+    NEW: 10,
+    ACCEPTED: 30,
+    PAID_PENDING: 50,
+    CONFIRMED: 70,
+    SHIPPED: 100,
+  };
+  return map[u] ?? 0;
+}
+
+function formatOrderDate(iso: string | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function awaitingPayment(status: string): boolean {
@@ -54,10 +65,8 @@ export default function MyOrders() {
       return;
     }
     try {
-      const res = await api.get<MyOrderRow[]>("/orders/my", {
-        params: { userId },
-      });
-      setOrders(Array.isArray(res.data) ? res.data : []);
+      const data = await fetchMyOrders(userId);
+      setOrders(data);
       setError(null);
     } catch (e) {
       console.error(e);
@@ -84,7 +93,7 @@ export default function MyOrders() {
     <div className="my-orders">
       <header className="my-orders__head">
         <h1 className="my-orders__title">Мои заказы</h1>
-        <p className="my-orders__subtitle">Обновление каждые 5 с</p>
+        <p className="my-orders__subtitle">Автообновление каждые 5 с</p>
       </header>
 
       {loading && <p className="my-orders__muted">Загрузка…</p>}
@@ -99,44 +108,71 @@ export default function MyOrders() {
       )}
 
       <div className="my-orders__list">
-        {orders.map((order) => (
-          <article key={order.id} className="my-orders__card">
-            <h3 className="my-orders__card-title">Заказ #{order.id}</h3>
-            <p className="my-orders__row">
-              <span className="my-orders__label">Сумма</span>
-              <span>{order.total} сом</span>
-            </p>
-            <p className="my-orders__row">
-              <span className="my-orders__label">Статус</span>
-              <span className="my-orders__status">{statusWithIcon(order.status)}</span>
-            </p>
-            {order.tracking != null && order.tracking.trim() !== "" && (
-              <p className="my-orders__tracking">📍 {order.tracking}</p>
-            )}
-            {awaitingPayment(order.status) && (
-              <div className="my-orders__pay-qr">
-                <p className="my-orders__pay-qr-title">Оплата MBank</p>
-                <img
-                  className="my-orders__pay-qr-img"
-                  src={mbankOrderQrImageUrl(order.total)}
-                  alt={`QR оплаты ${order.total} сом`}
-                  width={200}
-                  height={200}
-                />
-                <p className="my-orders__pay-qr-hint">Сканируйте QR</p>
+        {orders.map((order) => {
+          const pct = orderStatusProgress(order.status);
+          const dateLabel = formatOrderDate(order.createdAt);
+          return (
+            <article key={order.id} className="my-orders__card">
+              <div className="my-orders__card-head">
+                <h3 className="my-orders__card-title">Заказ #{order.id}</h3>
+                {dateLabel ? (
+                  <time className="my-orders__date" dateTime={order.createdAt}>
+                    {dateLabel}
+                  </time>
+                ) : null}
               </div>
-            )}
-            {order.items != null && order.items.length > 0 && (
-              <ul className="my-orders__items">
-                {order.items.map((it) => (
-                  <li key={it.id}>
-                    {it.name} · {it.color} / {it.size} × {it.quantity}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </article>
-        ))}
+
+              <p className="my-orders__status-line">{statusWithIcon(order.status)}</p>
+
+              <div
+                className="my-orders__progress-wrap"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct}
+                aria-label="Прогресс заказа"
+              >
+                <div className="my-orders__progress-track">
+                  <div
+                    className="my-orders__progress-fill"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+
+              <p className="my-orders__total-line">
+                <span className="my-orders__label">Сумма</span>
+                <span className="my-orders__total-value">{order.total} сом</span>
+              </p>
+
+              {order.tracking != null && order.tracking.trim() !== "" && (
+                <p className="my-orders__tracking">📍 {order.tracking}</p>
+              )}
+              {awaitingPayment(order.status) && (
+                <div className="my-orders__pay-qr">
+                  <p className="my-orders__pay-qr-title">Оплата MBank</p>
+                  <img
+                    className="my-orders__pay-qr-img"
+                    src={mbankOrderQrImageUrl(order.total)}
+                    alt={`QR оплаты ${order.total} сом`}
+                    width={200}
+                    height={200}
+                  />
+                  <p className="my-orders__pay-qr-hint">Сканируйте QR</p>
+                </div>
+              )}
+              {order.items != null && order.items.length > 0 && (
+                <ul className="my-orders__items">
+                  {order.items.map((it) => (
+                    <li key={it.id}>
+                      {it.name} · {it.color} / {it.size} × {it.quantity}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          );
+        })}
       </div>
     </div>
   );

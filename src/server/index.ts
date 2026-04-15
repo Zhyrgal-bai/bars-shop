@@ -467,32 +467,11 @@ app.delete("/promo/:code", async (req: Request, res: Response) => {
 // ================== CATEGORIES ==================
 app.get("/categories", async (_req: Request, res: Response) => {
   try {
-    const rows = await prisma.category.findMany({
-      where: { parentId: null },
-      orderBy: [{ id: "asc" }],
-      include: {
-        _count: { select: { products: true } },
-        children: {
-          orderBy: [{ id: "asc" }],
-          include: { _count: { select: { products: true } } },
-        },
-      },
+    const categories = await prisma.category.findMany({
+      include: { children: true },
+      orderBy: [{ parentId: "asc" }, { id: "asc" }],
     });
-    res.json(
-      rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        parentId: row.parentId,
-        productsCount: row._count.products,
-        children: row.children.map((child) => ({
-          id: child.id,
-          name: child.name,
-          parentId: child.parentId,
-          productsCount: child._count.products,
-          children: [],
-        })),
-      }))
-    );
+    res.json(categories);
   } catch (e) {
     console.error("GET CATEGORIES ERROR:", e);
     res.status(500).json({ error: "Ошибка получения категорий" });
@@ -500,7 +479,6 @@ app.get("/categories", async (_req: Request, res: Response) => {
 });
 
 app.post("/categories", async (req: Request, res: Response) => {
-  if (!denyIfNotAdmin(req, res)) return;
   try {
     const body = req.body as { name?: unknown; parentId?: unknown };
     const name = String(body.name ?? "").trim();
@@ -509,43 +487,16 @@ app.post("/categories", async (req: Request, res: Response) => {
     }
     const parentIdRaw = body.parentId;
     const parentId =
-      parentIdRaw == null || parentIdRaw === ""
+      parentIdRaw === undefined || parentIdRaw === null || parentIdRaw === ""
         ? null
         : Number(parentIdRaw);
-    if (parentId != null && !Number.isFinite(parentId)) {
-      return res.status(400).json({ error: "Неверный parentId" });
-    }
-    if (parentId != null) {
-      const parent = await prisma.category.findUnique({
-        where: { id: parentId },
-        select: { id: true, parentId: true },
-      });
-      if (!parent) {
-        return res.status(404).json({ error: "Родительская категория не найдена" });
-      }
-      if (parent.parentId != null) {
-        return res
-          .status(400)
-          .json({ error: "Подкатегорию можно создать только внутри main категории" });
-      }
-    }
-    const exists = await prisma.category.findFirst({
-      where: { name, parentId },
-      select: { id: true },
+    const category = await prisma.category.create({
+      data: { name, parentId },
     });
-    if (exists) {
-      return res.status(409).json({ error: "Категория уже существует" });
-    }
-    const created = await prisma.category.create({
-      data: {
-        name,
-        parentId,
-      },
-    });
-    res.status(201).json(created);
+    res.json(category);
   } catch (e) {
     console.error("CREATE CATEGORY ERROR:", e);
-    res.status(500).json({ error: "Ошибка создания категории" });
+    res.status(500).json({ error: "Failed to create category" });
   }
 });
 

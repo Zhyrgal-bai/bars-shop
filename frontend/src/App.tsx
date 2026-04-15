@@ -81,7 +81,7 @@ export default function App() {
   };
 
   const goAdminSection = (
-    section: "orders" | "products" | "analytics" | "settings"
+    section: "orders" | "products" | "categories" | "analytics" | "settings"
   ) => {
     setPage("admin");
     if (location.pathname === "/faq") {
@@ -90,6 +90,7 @@ export default function App() {
     const paths: Record<typeof section, string> = {
       orders: "#/admin/orders",
       products: "#/admin/products",
+      categories: "#/admin/categories",
       analytics: "#/admin/analytics",
       settings: "#/admin/settings",
     };

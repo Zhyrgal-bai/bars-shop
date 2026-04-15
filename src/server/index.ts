@@ -103,10 +103,62 @@ type CleanVariantInput = {
   sizes: { size: string; stock: number }[];
 };
 
+type SeedCategoryNode = {
+  name: string;
+  children?: SeedCategoryNode[];
+};
+
+const BASE_CATEGORY_TREE: SeedCategoryNode[] = [
+  {
+    name: "Верх",
+    children: [{ name: "Худи" }, { name: "Футболки" }, { name: "Свитшоты" }],
+  },
+  {
+    name: "Низ",
+    children: [{ name: "Штаны" }, { name: "Шорты" }],
+  },
+  {
+    name: "Аксессуары",
+    children: [{ name: "Кепки" }, { name: "Сумки" }],
+  },
+];
+
 function clampDiscountPercent(n: unknown): number {
   const v = Number(n);
   if (!Number.isFinite(v)) return 0;
   return Math.min(100, Math.max(0, Math.round(v)));
+}
+
+async function ensureBaseCategories(): Promise<void> {
+  for (const main of BASE_CATEGORY_TREE) {
+    const parentExisting = await prisma.category.findFirst({
+      where: { name: main.name, parentId: null },
+    });
+    const parent =
+      parentExisting ??
+      (await prisma.category.create({
+        data: { name: main.name },
+      }));
+    for (const child of main.children ?? []) {
+      const exists = await prisma.category.findFirst({
+        where: { name: child.name, parentId: parent.id },
+      });
+      if (!exists) {
+        await prisma.category.create({
+          data: { name: child.name, parentId: parent.id },
+        });
+      }
+    }
+  }
+}
+
+async function getDefaultLeafCategoryId(): Promise<number | null> {
+  const leaf = await prisma.category.findFirst({
+    where: { parentId: { not: null } },
+    orderBy: [{ parentId: "asc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  return leaf?.id ?? null;
 }
 
 function normalizeVariantsInput(
@@ -412,6 +464,122 @@ app.delete("/promo/:code", async (req: Request, res: Response) => {
   }
 });
 
+// ================== CATEGORIES ==================
+app.get("/categories", async (_req: Request, res: Response) => {
+  try {
+    const rows = await prisma.category.findMany({
+      where: { parentId: null },
+      orderBy: [{ id: "asc" }],
+      include: {
+        _count: { select: { products: true } },
+        children: {
+          orderBy: [{ id: "asc" }],
+          include: { _count: { select: { products: true } } },
+        },
+      },
+    });
+    res.json(
+      rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        parentId: row.parentId,
+        productsCount: row._count.products,
+        children: row.children.map((child) => ({
+          id: child.id,
+          name: child.name,
+          parentId: child.parentId,
+          productsCount: child._count.products,
+          children: [],
+        })),
+      }))
+    );
+  } catch (e) {
+    console.error("GET CATEGORIES ERROR:", e);
+    res.status(500).json({ error: "Ошибка получения категорий" });
+  }
+});
+
+app.post("/categories", async (req: Request, res: Response) => {
+  if (!denyIfNotAdmin(req, res)) return;
+  try {
+    const body = req.body as { name?: unknown; parentId?: unknown };
+    const name = String(body.name ?? "").trim();
+    if (!name) {
+      return res.status(400).json({ error: "Укажите название категории" });
+    }
+    const parentIdRaw = body.parentId;
+    const parentId =
+      parentIdRaw == null || parentIdRaw === ""
+        ? null
+        : Number(parentIdRaw);
+    if (parentId != null && !Number.isFinite(parentId)) {
+      return res.status(400).json({ error: "Неверный parentId" });
+    }
+    if (parentId != null) {
+      const parent = await prisma.category.findUnique({
+        where: { id: parentId },
+        select: { id: true, parentId: true },
+      });
+      if (!parent) {
+        return res.status(404).json({ error: "Родительская категория не найдена" });
+      }
+      if (parent.parentId != null) {
+        return res
+          .status(400)
+          .json({ error: "Подкатегорию можно создать только внутри main категории" });
+      }
+    }
+    const exists = await prisma.category.findFirst({
+      where: { name, parentId },
+      select: { id: true },
+    });
+    if (exists) {
+      return res.status(409).json({ error: "Категория уже существует" });
+    }
+    const created = await prisma.category.create({
+      data: {
+        name,
+        parentId,
+      },
+    });
+    res.status(201).json(created);
+  } catch (e) {
+    console.error("CREATE CATEGORY ERROR:", e);
+    res.status(500).json({ error: "Ошибка создания категории" });
+  }
+});
+
+app.delete("/categories/:id", async (req: Request, res: Response) => {
+  if (!denyIfNotAdminQuery(req, res)) return;
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "Неверный id" });
+    }
+    const row = await prisma.category.findUnique({
+      where: { id },
+      include: {
+        children: { select: { id: true } },
+        _count: { select: { products: true } },
+      },
+    });
+    if (!row) {
+      return res.status(404).json({ error: "Категория не найдена" });
+    }
+    if (row.children.length > 0) {
+      return res.status(400).json({ error: "Удалите сначала подкатегории" });
+    }
+    if (row._count.products > 0) {
+      return res.status(400).json({ error: "Категория содержит товары" });
+    }
+    await prisma.category.delete({ where: { id } });
+    res.status(204).send();
+  } catch (e) {
+    console.error("DELETE CATEGORY ERROR:", e);
+    res.status(500).json({ error: "Ошибка удаления категории" });
+  }
+});
+
 // ================== CREATE PRODUCT ==================
 app.post("/products", async (req: Request, res: Response) => {
   if (!denyIfNotAdmin(req, res)) return;
@@ -423,12 +591,27 @@ app.post("/products", async (req: Request, res: Response) => {
       image?: unknown;
       images?: unknown;
       description?: unknown;
-      category?: unknown;
+      categoryId?: unknown;
+      isNew?: unknown;
+      isPopular?: unknown;
+      isSale?: unknown;
       discountPercent?: unknown;
       variants?: unknown;
     };
 
-    const { name, price, image, images, description, category, discountPercent, variants } =
+    const {
+      name,
+      price,
+      image,
+      images,
+      description,
+      categoryId,
+      isNew,
+      isPopular,
+      isSale,
+      discountPercent,
+      variants,
+    } =
       body;
 
     const rawImages = Array.isArray(images)
@@ -450,6 +633,17 @@ app.post("/products", async (req: Request, res: Response) => {
     if (!name || price == null || !primaryImage) {
       return res.status(400).json({ error: "Неверные данные" });
     }
+    const normalizedCategoryId = Number(categoryId);
+    if (!Number.isFinite(normalizedCategoryId)) {
+      return res.status(400).json({ error: "Нужна подкатегория" });
+    }
+    const category = await prisma.category.findUnique({
+      where: { id: normalizedCategoryId },
+      select: { id: true, parentId: true },
+    });
+    if (!category || category.parentId == null) {
+      return res.status(400).json({ error: "Выберите подкатегорию" });
+    }
 
     const product = await prisma.product.create({
       data: {
@@ -458,10 +652,10 @@ app.post("/products", async (req: Request, res: Response) => {
         image: primaryImage,
         images: imageList,
         description: description != null ? String(description) : "",
-        category:
-          category != null && String(category).trim() !== ""
-            ? String(category).trim()
-            : "",
+        categoryId: normalizedCategoryId,
+        isNew: Boolean(isNew),
+        isPopular: Boolean(isPopular),
+        isSale: Boolean(isSale),
         discountPercent: clampDiscountPercent(discountPercent),
         variants: {
           create: cleanVariants.map((v) => ({
@@ -476,6 +670,9 @@ app.post("/products", async (req: Request, res: Response) => {
         },
       },
       include: {
+        category: {
+          include: { parent: true },
+        },
         variants: {
           include: {
             sizes: true,
@@ -702,6 +899,7 @@ app.get("/products", async (req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
       include: {
+        category: { include: { parent: true } },
         variants: {
           include: {
             sizes: true,
@@ -726,6 +924,7 @@ app.get("/products/:id", async (req: Request, res: Response) => {
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
+        category: { include: { parent: true } },
         variants: {
           include: { sizes: true },
         },
@@ -1080,7 +1279,10 @@ app.put("/products/:id", async (req: Request, res: Response) => {
       image?: unknown;
       images?: unknown;
       description?: unknown;
-      category?: unknown;
+      categoryId?: unknown;
+      isNew?: unknown;
+      isPopular?: unknown;
+      isSale?: unknown;
       discountPercent?: unknown;
       variants?: unknown;
     };
@@ -1096,7 +1298,10 @@ app.put("/products/:id", async (req: Request, res: Response) => {
       image,
       images,
       description,
-      category,
+      categoryId,
+      isNew,
+      isPopular,
+      isSale,
       discountPercent,
       variants,
     } = body;
@@ -1108,7 +1313,10 @@ app.put("/products/:id", async (req: Request, res: Response) => {
       image === undefined &&
       images === undefined &&
       description === undefined &&
-      category === undefined &&
+      categoryId === undefined &&
+      isNew === undefined &&
+      isPopular === undefined &&
+      isSale === undefined &&
       discountPercent === undefined &&
       !hasVariantUpdate
     ) {
@@ -1130,7 +1338,10 @@ app.put("/products/:id", async (req: Request, res: Response) => {
       image?: string;
       images?: string[];
       description?: string | null;
-      category?: string;
+      categoryId?: number;
+      isNew?: boolean;
+      isPopular?: boolean;
+      isSale?: boolean;
       discountPercent?: number;
     } = {};
 
@@ -1139,9 +1350,23 @@ app.put("/products/:id", async (req: Request, res: Response) => {
     if (discountPercent !== undefined) {
       scalar.discountPercent = clampDiscountPercent(discountPercent);
     }
-    if (category !== undefined) {
-      scalar.category = String(category).trim();
+    if (categoryId !== undefined) {
+      const normalizedCategoryId = Number(categoryId);
+      if (!Number.isFinite(normalizedCategoryId)) {
+        return res.status(400).json({ error: "Неверная категория" });
+      }
+      const category = await prisma.category.findUnique({
+        where: { id: normalizedCategoryId },
+        select: { id: true, parentId: true },
+      });
+      if (!category || category.parentId == null) {
+        return res.status(400).json({ error: "Выберите подкатегорию" });
+      }
+      scalar.categoryId = normalizedCategoryId;
     }
+    if (isNew !== undefined) scalar.isNew = Boolean(isNew);
+    if (isPopular !== undefined) scalar.isPopular = Boolean(isPopular);
+    if (isSale !== undefined) scalar.isSale = Boolean(isSale);
     if (images !== undefined) {
       const list = Array.isArray(images)
         ? images
@@ -1187,6 +1412,7 @@ app.put("/products/:id", async (req: Request, res: Response) => {
       }
 
       const include = {
+        category: { include: { parent: true } },
         variants: { include: { sizes: true } },
       };
       if (Object.keys(scalar).length > 0) {
@@ -1250,13 +1476,28 @@ process.on("unhandledRejection", (reason) => {
 // ================== START SERVER ==================
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on ${PORT}`);
-
-  if (bot) {
-    bot.telegram
-      .setWebhook(TELEGRAM_WEBHOOK_URL)
-      .then(() => console.log("Webhook set:", TELEGRAM_WEBHOOK_URL))
-      .catch((err) => console.error("Webhook error:", err));
+void (async () => {
+  try {
+    await ensureBaseCategories();
+    const fallbackCategoryId = await getDefaultLeafCategoryId();
+    if (fallbackCategoryId != null) {
+      await prisma.product.updateMany({
+        where: { categoryId: 0 },
+        data: { categoryId: fallbackCategoryId },
+      }).catch(() => undefined);
+    }
+  } catch (e) {
+    console.error("CATEGORY INIT ERROR:", e);
   }
-});
+
+  app.listen(PORT, () => {
+    console.log(`Server running on ${PORT}`);
+
+    if (bot) {
+      bot.telegram
+        .setWebhook(TELEGRAM_WEBHOOK_URL)
+        .then(() => console.log("Webhook set:", TELEGRAM_WEBHOOK_URL))
+        .catch((err) => console.error("Webhook error:", err));
+    }
+  });
+})();

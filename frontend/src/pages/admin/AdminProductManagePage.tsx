@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminService } from "../../services/admin.service";
-import type { Product } from "../../types";
+import type { Category, Product } from "../../types";
 import { getPrimaryImage, getTotalStockSum } from "../../utils/product";
 import ProductEditModal from "../../components/admin/ProductEditModal";
-import { PRODUCT_CATEGORIES } from "../../constants/productCatalog";
 
 type SortMode = "default" | "price-asc" | "price-desc";
 
@@ -15,12 +14,15 @@ export default function AdminProductManagePage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [sort, setSort] = useState<SortMode>("default");
   const [editId, setEditId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await adminService.getProducts();
       setProducts(data);
+      const tree = await adminService.getCategories();
+      setCategories(tree);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка загрузки");
@@ -42,7 +44,9 @@ export default function AdminProductManagePage() {
     }
     if (categoryFilter) {
       rows = rows.filter(
-        (p) => (p.category ?? "").trim() === categoryFilter
+        (p) =>
+          (p.category?.parent?.name ?? p.category?.name ?? "").trim() ===
+          categoryFilter
       );
     }
     if (sort === "price-asc") {
@@ -104,9 +108,9 @@ export default function AdminProductManagePage() {
           aria-label="Категория"
         >
           <option value="">Все категории</option>
-          {PRODUCT_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {categories.map((c) => (
+            <option key={c.id} value={c.name}>
+              {c.name}
             </option>
           ))}
         </select>
@@ -140,7 +144,8 @@ export default function AdminProductManagePage() {
             const id = p.id;
             if (id == null) return null;
             const qty = getTotalStockSum(p);
-            const cat = (p.category ?? "").trim() || "—";
+            const cat = p.category?.name ?? "—";
+            const parentCat = p.category?.parent?.name;
             return (
               <article key={id} className="admin-pm-card">
                 <div className="admin-pm-card__img-wrap">
@@ -159,7 +164,7 @@ export default function AdminProductManagePage() {
                   <dl className="admin-pm-card__dl">
                     <div>
                       <dt>Категория</dt>
-                      <dd>{cat}</dd>
+                      <dd>{parentCat ? `${parentCat} / ${cat}` : cat}</dd>
                     </div>
                     <div>
                       <dt>В наличии</dt>

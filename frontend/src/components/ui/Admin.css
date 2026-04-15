@@ -1288,6 +1288,35 @@
   cursor: pointer;
 }
 
+.admin-cat-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.admin-cat-tree + .admin-cat-tree {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-cat-children {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 14px;
+}
+
+.admin-cat-node {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-cat-node--child {
+  font-size: 14px;
+}
+
 @media (max-width: 720px) {
   .admin-dash {
     flex-direction: column;

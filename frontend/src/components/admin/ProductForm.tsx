@@ -1,14 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAdminStore } from "../../store/admin.store";
 import { adminService } from "../../services/admin.service";
-import {
-  PRODUCT_CATEGORIES,
-  PRODUCT_SIZES,
-} from "../../constants/productCatalog";
-import type { Variant } from "../../types";
-
-const CATEGORY_OPTIONS = PRODUCT_CATEGORIES;
+import { PRODUCT_SIZES } from "../../constants/productCatalog";
+import type { Category, Variant } from "../../types";
 const SIZE_OPTIONS = PRODUCT_SIZES;
 type SizeOption = (typeof SIZE_OPTIONS)[number];
 
@@ -54,12 +49,32 @@ const ProductForm = () => {
   const [price, setPrice] = useState<number | "">("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [category, setCategory] = useState<string>(CATEGORY_OPTIONS[0]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [mainCategoryId, setMainCategoryId] = useState<number | "">("");
+  const [subCategoryId, setSubCategoryId] = useState<number | "">("");
+  const [isNew, setIsNew] = useState(false);
+  const [isPopular, setIsPopular] = useState(false);
+  const [isSale, setIsSale] = useState(false);
   const [discountPercent, setDiscountPercent] = useState<number | "">("");
   const [variantDrafts, setVariantDrafts] = useState<VariantDraft[]>([
     createVariantDraft(),
   ]);
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const tree = await adminService.getCategories();
+        setCategories(tree);
+        const firstMain = tree[0];
+        const firstSub = firstMain?.children?.[0];
+        setMainCategoryId(firstMain?.id ?? "");
+        setSubCategoryId(firstSub?.id ?? "");
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
 
   const updateDraft = (id: string, patch: Partial<Pick<VariantDraft, "color">>) => {
     setVariantDrafts((prev) =>
@@ -176,12 +191,20 @@ const ProductForm = () => {
 
     const variants = draftsToVariants(variantDrafts);
 
+    if (!subCategoryId) {
+      setFormError("Выберите подкатегорию.");
+      return;
+    }
+
     const data = {
       name: name.trim(),
       price: priceNum,
       image: imageUrls[0] ?? "",
       images: imageUrls,
-      category,
+      categoryId: Number(subCategoryId),
+      isNew,
+      isPopular,
+      isSale,
       discountPercent: disc,
       description: "",
       variants,
@@ -193,8 +216,10 @@ const ProductForm = () => {
       setName("");
       setPrice("");
       setImageUrls([]);
-      setCategory(CATEGORY_OPTIONS[0]);
       setDiscountPercent("");
+      setIsNew(false);
+      setIsPopular(false);
+      setIsSale(false);
       setVariantDrafts([createVariantDraft()]);
       alert("Товар добавлен ✅");
     } catch (err) {
@@ -300,21 +325,74 @@ const ProductForm = () => {
       </div>
 
       <div className="admin-form-section">
-        <label className="admin-field-label" htmlFor="pf-category">
+        <label className="admin-field-label" htmlFor="pf-main-category">
           Категория
         </label>
         <select
-          id="pf-category"
+          id="pf-main-category"
           className="admin-select"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          value={mainCategoryId}
+          onChange={(e) => {
+            const nextMainId = Number(e.target.value);
+            setMainCategoryId(nextMainId);
+            const nextMain = categories.find((c) => c.id === nextMainId);
+            setSubCategoryId(nextMain?.children?.[0]?.id ?? "");
+          }}
         >
-          {CATEGORY_OPTIONS.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </select>
+      </div>
+      <div className="admin-form-section">
+        <label className="admin-field-label" htmlFor="pf-sub-category">
+          Подкатегория
+        </label>
+        <select
+          id="pf-sub-category"
+          className="admin-select"
+          value={subCategoryId}
+          onChange={(e) => setSubCategoryId(Number(e.target.value))}
+        >
+          {(categories.find((c) => c.id === mainCategoryId)?.children ?? []).map(
+            (c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            )
+          )}
+        </select>
+      </div>
+      <div className="admin-form-section">
+        <span className="admin-field-label">Фильтры</span>
+        <div className="admin-sizes">
+          <label className="admin-size-chip">
+            <input
+              type="checkbox"
+              checked={isNew}
+              onChange={(e) => setIsNew(e.target.checked)}
+            />
+            <span className="admin-size-chip-text">NEW</span>
+          </label>
+          <label className="admin-size-chip">
+            <input
+              type="checkbox"
+              checked={isPopular}
+              onChange={(e) => setIsPopular(e.target.checked)}
+            />
+            <span className="admin-size-chip-text">POPULAR</span>
+          </label>
+          <label className="admin-size-chip">
+            <input
+              type="checkbox"
+              checked={isSale}
+              onChange={(e) => setIsSale(e.target.checked)}
+            />
+            <span className="admin-size-chip-text">SALE</span>
+          </label>
+        </div>
       </div>
 
       <div className="admin-form-divider" />

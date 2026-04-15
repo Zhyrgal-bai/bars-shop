@@ -10,6 +10,15 @@ export interface Variant {
   sizes: Size[];
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  parentId?: number | null;
+  parent?: Category | null;
+  children?: Category[];
+  productsCount?: number;
+}
+
 /** Цвет в новой модели (опционально, вместе с `sizes`). */
 export interface ProductColor {
   name: string;
@@ -30,7 +39,11 @@ export interface Product {
   sold?: number;
 
   description?: string;
-  category?: string;
+  categoryId?: number;
+  category?: Category;
+  isNew?: boolean;
+  isPopular?: boolean;
+  isSale?: boolean;
 
   /** Скидка в процентах 0–100 от поля `price`. */
   discountPercent?: number;

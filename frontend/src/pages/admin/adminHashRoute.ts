@@ -7,9 +7,16 @@ export function adminPathFromHash(): string {
   return path;
 }
 
-export type AdminNavKey = "orders" | "products" | "manage" | "analytics" | "settings";
+export type AdminNavKey =
+  | "orders"
+  | "products"
+  | "manage"
+  | "categories"
+  | "analytics"
+  | "settings";
 
 export function adminNavKeyFromPath(path: string): AdminNavKey {
+  if (path.includes("/admin/categories")) return "categories";
   if (path.includes("/admin/products/manage")) return "manage";
   if (path.includes("/admin/products")) return "products";
   if (path.includes("/admin/analytics")) return "analytics";

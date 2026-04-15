@@ -15,6 +15,12 @@ const nav: {
     label: "Каталог",
     icon: "🛍️",
   },
+  {
+    href: "#/admin/categories",
+    match: "categories",
+    label: "Категории",
+    icon: "🗂️",
+  },
   { href: "#/admin/analytics", match: "analytics", label: "Аналитика", icon: "📊" },
   { href: "#/admin/settings", match: "settings", label: "Настройки", icon: "⚙️" },
 ];

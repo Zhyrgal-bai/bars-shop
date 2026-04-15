@@ -175,7 +175,11 @@ export default function ProductDetailModal({
             )}
 
             {product.category ? (
-              <span className="pdm-badge">{product.category}</span>
+              <span className="pdm-badge">
+                {product.category.parent?.name
+                  ? `${product.category.parent.name} / ${product.category.name}`
+                  : product.category.name}
+              </span>
             ) : null}
 
             <h2 id="pdm-title" className="pdm-title">

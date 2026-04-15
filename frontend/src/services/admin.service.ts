@@ -1,5 +1,5 @@
 import { api, API_BASE_URL } from "./api";
-import type { Product } from "../types";
+import type { Category, Product } from "../types";
 import { getWebAppUserId } from "../utils/telegramUserId";
 
 function requireAdminUserId(): number {
@@ -92,6 +92,11 @@ export type AdminAnalytics = {
   byStatus?: Record<string, number>;
 };
 
+export type CategoryCreateInput = {
+  name: string;
+  parentId?: number | null;
+};
+
 async function fetchAdminOrders(): Promise<AdminOrderListItem[]> {
   const data = await adminGet<AdminOrderListItem[]>("/orders");
   return Array.isArray(data) ? data : [];
@@ -151,7 +156,10 @@ export const adminService = {
         | "image"
         | "images"
         | "description"
-        | "category"
+        | "categoryId"
+        | "isNew"
+        | "isPopular"
+        | "isSale"
         | "discountPercent"
         | "variants"
       >
@@ -290,5 +298,21 @@ export const adminService = {
       shipped: typeof d.shipped === "number" ? d.shipped : d.done,
       byStatus,
     };
+  },
+
+  async getCategories(): Promise<Category[]> {
+    const res = await api.get<Category[]>("/categories");
+    return Array.isArray(res.data) ? res.data : [];
+  },
+
+  async createCategory(input: CategoryCreateInput): Promise<Category> {
+    return adminPost<Category>("/categories", {
+      name: input.name,
+      parentId: input.parentId ?? null,
+    });
+  },
+
+  async deleteCategory(id: number): Promise<void> {
+    await adminDelete(`/categories/${id}`);
   },
 };

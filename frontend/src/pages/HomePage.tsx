@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
 import { fetchMyOrders } from "../services/myOrdersApi";
-import type { Product } from "../types";
+import type { Category, Product } from "../types";
 import ProductGrid from "../components/product/ProductGrid";
 import ProductDetailModal from "../components/product/ProductDetailModal";
 import Toast from "../components/ui/Toast";
@@ -15,6 +15,7 @@ export default function HomePage() {
   const [toast, setToast] = useState("");
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [activeCategory, setActiveCategory] = useState("ВСЕ");
+  const [categoryTree, setCategoryTree] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFirstOrderBanner, setShowFirstOrderBanner] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -40,6 +41,17 @@ export default function HomePage() {
     };
 
     fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await api.get<Category[]>("/categories");
+        setCategoryTree(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        setCategoryTree([]);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -75,23 +87,28 @@ export default function HomePage() {
     }
   };
 
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(
-      new Set(
-        products
-          .map((p) => p.category)
-          .filter((category): category is string => Boolean(category))
-      )
-    );
-    return ["ВСЕ", ...uniqueCategories];
-  }, [products]);
+  const categories = useMemo(
+    () => [
+      "ВСЕ",
+      "НОВИНКИ",
+      "ПОПУЛЯРНОЕ",
+      "СКИДКИ",
+      ...categoryTree.map((c) => c.name.toUpperCase()),
+    ],
+    [categoryTree]
+  );
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return products.filter((p) => {
+      const parentName = p.category?.parent?.name?.toUpperCase() ?? "";
       const categoryMatch =
-        activeCategory === "ВСЕ" || p.category === activeCategory;
+        activeCategory === "ВСЕ" ||
+        (activeCategory === "НОВИНКИ" && p.isNew === true) ||
+        (activeCategory === "ПОПУЛЯРНОЕ" && p.isPopular === true) ||
+        (activeCategory === "СКИДКИ" && p.isSale === true) ||
+        parentName === activeCategory;
       const searchMatch = p.name.toLowerCase().includes(normalizedQuery);
       return categoryMatch && searchMatch;
     });

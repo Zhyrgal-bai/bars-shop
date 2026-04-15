@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminService } from "../../services/admin.service";
-import {
-  PRODUCT_CATEGORIES,
-  PRODUCT_SIZES,
-} from "../../constants/productCatalog";
-import type { Product, Variant } from "../../types";
+import { PRODUCT_SIZES } from "../../constants/productCatalog";
+import type { Category, Product, Variant } from "../../types";
 import { getProductImages } from "../../utils/product";
 
-const CATEGORY_OPTIONS = PRODUCT_CATEGORIES;
 const SIZE_OPTIONS = PRODUCT_SIZES;
 type SizeOption = (typeof SIZE_OPTIONS)[number];
 
@@ -63,8 +59,6 @@ function draftsToVariants(drafts: VariantDraft[]): Variant[] {
   });
 }
 
-const CAT_SET = new Set<string>(PRODUCT_CATEGORIES);
-
 type Props = {
   open: boolean;
   productId: number | null;
@@ -85,7 +79,12 @@ export default function ProductEditModal({
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState<number | "">("");
-  const [category, setCategory] = useState<string>(CATEGORY_OPTIONS[0]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [mainCategoryId, setMainCategoryId] = useState<number | "">("");
+  const [subCategoryId, setSubCategoryId] = useState<number | "">("");
+  const [isNew, setIsNew] = useState(false);
+  const [isPopular, setIsPopular] = useState(false);
+  const [isSale, setIsSale] = useState(false);
   const [discountPercent, setDiscountPercent] = useState<number | "">("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -98,8 +97,13 @@ export default function ProductEditModal({
   const resetFromProduct = useCallback((p: Product) => {
     setName(p.name);
     setPrice(p.price);
-    const cat = p.category?.trim() ?? "";
-    setCategory(CAT_SET.has(cat) ? cat : CATEGORY_OPTIONS[0]);
+    const subId = p.categoryId ?? p.category?.id ?? "";
+    const parentId = p.category?.parentId ?? p.category?.parent?.id ?? "";
+    setMainCategoryId(parentId);
+    setSubCategoryId(subId);
+    setIsNew(Boolean(p.isNew));
+    setIsPopular(Boolean(p.isPopular));
+    setIsSale(Boolean(p.isSale));
     setDiscountPercent(
       p.discountPercent != null && Number.isFinite(p.discountPercent)
         ? Math.min(100, Math.max(0, Math.round(Number(p.discountPercent))))
@@ -111,6 +115,22 @@ export default function ProductEditModal({
     setMainIdx(0);
     setVariantDrafts(productToDrafts(p));
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    void (async () => {
+      try {
+        const tree = await adminService.getCategories();
+        setCategories(tree);
+        setMainCategoryId((prev) => (prev === "" ? (tree[0]?.id ?? "") : prev));
+        setSubCategoryId((prev) =>
+          prev === "" ? (tree[0]?.children?.[0]?.id ?? "") : prev
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [open]);
 
   useEffect(() => {
     if (!open || productId == null) {
@@ -232,6 +252,10 @@ export default function ProductEditModal({
       setSaveError("Нужно хотя бы одно фото.");
       return;
     }
+    if (!subCategoryId) {
+      setSaveError("Выберите подкатегорию.");
+      return;
+    }
 
     for (let i = 0; i < variantDrafts.length; i++) {
       const d = variantDrafts[i];
@@ -272,7 +296,10 @@ export default function ProductEditModal({
       await adminService.updateProduct(productId, {
         name: name.trim(),
         price: Math.round(priceNum),
-        category,
+        categoryId: Number(subCategoryId),
+        isNew,
+        isPopular,
+        isSale,
         discountPercent: Math.round(disc),
         description: description.trim(),
         images: ordered,
@@ -383,21 +410,74 @@ export default function ProductEditModal({
                 </div>
               </div>
               <div className="admin-form-section">
-                <label className="admin-field-label" htmlFor="em-cat">
+                <label className="admin-field-label" htmlFor="em-main-cat">
                   Категория
                 </label>
                 <select
-                  id="em-cat"
+                  id="em-main-cat"
                   className="admin-select"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={mainCategoryId}
+                  onChange={(e) => {
+                    const nextMainId = Number(e.target.value);
+                    setMainCategoryId(nextMainId);
+                    const nextMain = categories.find((c) => c.id === nextMainId);
+                    setSubCategoryId(nextMain?.children?.[0]?.id ?? "");
+                  }}
                 >
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="admin-form-section">
+                <label className="admin-field-label" htmlFor="em-sub-cat">
+                  Подкатегория
+                </label>
+                <select
+                  id="em-sub-cat"
+                  className="admin-select"
+                  value={subCategoryId}
+                  onChange={(e) => setSubCategoryId(Number(e.target.value))}
+                >
+                  {(categories.find((c) => c.id === mainCategoryId)?.children ?? []).map(
+                    (c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+              <div className="admin-form-section">
+                <span className="admin-field-label">Фильтры</span>
+                <div className="admin-sizes">
+                  <label className="admin-size-chip">
+                    <input
+                      type="checkbox"
+                      checked={isNew}
+                      onChange={(e) => setIsNew(e.target.checked)}
+                    />
+                    <span className="admin-size-chip-text">NEW</span>
+                  </label>
+                  <label className="admin-size-chip">
+                    <input
+                      type="checkbox"
+                      checked={isPopular}
+                      onChange={(e) => setIsPopular(e.target.checked)}
+                    />
+                    <span className="admin-size-chip-text">POPULAR</span>
+                  </label>
+                  <label className="admin-size-chip">
+                    <input
+                      type="checkbox"
+                      checked={isSale}
+                      onChange={(e) => setIsSale(e.target.checked)}
+                    />
+                    <span className="admin-size-chip-text">SALE</span>
+                  </label>
+                </div>
               </div>
               <div className="admin-form-section">
                 <label className="admin-field-label" htmlFor="em-desc">

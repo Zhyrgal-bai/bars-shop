@@ -12,7 +12,12 @@ const SUPPORT_BOT_URL = "https://t.me/coffee_market_test_bot";
 
 type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
 
-type AdminSection = "orders" | "products" | "analytics" | "settings";
+type AdminSection =
+  | "orders"
+  | "products"
+  | "categories"
+  | "analytics"
+  | "settings";
 
 type SideMenuProps = {
   open: boolean;
@@ -37,6 +42,7 @@ function activeAdminSection(hash: string): AdminSection | null {
   if (!hash.includes("/admin")) return null;
   if (hash.includes("/analytics")) return "analytics";
   if (hash.includes("/settings")) return "settings";
+  if (hash.includes("/categories")) return "categories";
   if (hash.includes("/products")) return "products";
   if (hash.includes("/orders")) return "orders";
   return "orders";
@@ -50,6 +56,7 @@ const ADMIN_LINKS: {
 }[] = [
   { section: "orders", hash: "#/admin/orders", icon: "🗂️", label: "Заказы" },
   { section: "products", hash: "#/admin/products", icon: "🏷️", label: "Товары" },
+  { section: "categories", hash: "#/admin/categories", icon: "🗂", label: "Категории" },
   { section: "analytics", hash: "#/admin/analytics", icon: "📊", label: "Аналитика" },
   { section: "settings", hash: "#/admin/settings", icon: "⚙", label: "Настройки" },
 ];

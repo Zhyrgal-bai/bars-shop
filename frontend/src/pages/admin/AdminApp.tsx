@@ -5,6 +5,7 @@ import AdminProductsPage from "./AdminProductsPage";
 import AdminAnalyticsPage from "./AdminAnalyticsPage";
 import AdminSettingsPage from "./AdminSettingsPage";
 import AdminProductManagePage from "./AdminProductManagePage";
+import AdminCategoriesPage from "./AdminCategoriesPage";
 import AdminErrorBoundary from "./AdminErrorBoundary";
 import {
   adminPathFromHash,
@@ -38,6 +39,9 @@ export default function AdminApp({ onExit }: AdminAppProps) {
     }
     if (path.includes("/admin/analytics")) {
       return <AdminAnalyticsPage key="analytics" />;
+    }
+    if (path.includes("/admin/categories")) {
+      return <AdminCategoriesPage key="categories" />;
     }
     if (path.includes("/admin/settings")) {
       return <AdminSettingsPage key="settings" />;

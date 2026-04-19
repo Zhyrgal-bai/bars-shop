@@ -993,6 +993,61 @@
   font-family: inherit;
 }
 
+.admin-color-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-color-native {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.admin-color-native::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.admin-color-native::-webkit-color-swatch {
+  border-radius: 6px;
+  border: none;
+}
+
+.admin-color-name-input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.admin-color-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.admin-color-preset-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-color-preset-btn:hover {
+  border-color: rgba(255, 45, 45, 0.45);
+  color: #fff;
+}
+
 .admin-pm-page__head-row {
   display: flex;
   flex-wrap: wrap;

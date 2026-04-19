@@ -4,6 +4,12 @@ import { PRODUCT_SIZES } from "../../constants/productCatalog";
 import type { Category, Product, Variant } from "../../types";
 import { getProductImages } from "../../utils/product";
 import { categoryRoots } from "../../utils/categoryTree";
+import {
+  expandShortHex,
+  isValidHexColor,
+  lookupVariantHexByName,
+  resolvePickerHex,
+} from "../../utils/variantColor";
 
 const SIZE_OPTIONS = PRODUCT_SIZES;
 type SizeOption = (typeof SIZE_OPTIONS)[number];
@@ -12,9 +18,18 @@ type SizeRow = { enabled: boolean; stock: number | "" };
 
 type VariantDraft = {
   sid: string;
-  color: string;
+  colorName: string;
+  colorHex: string;
   sizes: Record<SizeOption, SizeRow>;
 };
+
+const COLOR_PRESETS: ReadonlyArray<{ name: string; hex: string }> = [
+  { name: "черный", hex: "#000000" },
+  { name: "белый", hex: "#ffffff" },
+  { name: "серый", hex: "#808080" },
+  { name: "молочный", hex: "#fff8e7" },
+  { name: "темно-синий", hex: "#00008b" },
+];
 
 function newSid() {
   return globalThis.crypto?.randomUUID?.() ?? `e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -29,7 +44,7 @@ function emptySizes(): Record<SizeOption, SizeRow> {
 }
 
 function createEmptyVariant(): VariantDraft {
-  return { sid: newSid(), color: "", sizes: emptySizes() };
+  return { sid: newSid(), colorName: "", colorHex: "#cccccc", sizes: emptySizes() };
 }
 
 function productToDrafts(p: Product): VariantDraft[] {
@@ -45,18 +60,33 @@ function productToDrafts(p: Product): VariantDraft[] {
         sizes[key as SizeOption] = { enabled: true, stock: s.stock };
       }
     }
-    return { sid: newSid(), color: v.color, sizes };
+    return {
+      sid: newSid(),
+      colorName: v.color,
+      colorHex: resolvePickerHex(v),
+      sizes,
+    };
   });
 }
 
-function draftsToVariants(drafts: VariantDraft[]): Variant[] {
+function buildVariantsForApi(drafts: VariantDraft[]): Variant[] {
   return drafts.map((d) => {
+    const name = d.colorName.trim();
+    let hex = d.colorHex.trim();
+    if (!isValidHexColor(hex)) {
+      hex = lookupVariantHexByName(name) ?? "#cccccc";
+    } else {
+      hex = expandShortHex(hex);
+    }
     const sizes = SIZE_OPTIONS.filter((sz) => d.sizes[sz].enabled).map((sz) => {
       const st = d.sizes[sz].stock;
       const stock = typeof st === "number" && !Number.isNaN(st) ? st : 0;
       return { size: sz, stock };
     });
-    return { color: d.color.trim(), sizes };
+    return {
+      color: { name, hex },
+      sizes,
+    } as unknown as Variant;
   });
 }
 
@@ -189,7 +219,10 @@ export default function ProductEditModal({
     };
   }, [open, productId, resetFromProduct]);
 
-  const updateDraft = (sid: string, patch: Partial<Pick<VariantDraft, "color">>) => {
+  const updateDraft = (
+    sid: string,
+    patch: Partial<Pick<VariantDraft, "colorName" | "colorHex">>
+  ) => {
     setVariantDrafts((prev) =>
       prev.map((v) => (v.sid === sid ? { ...v, ...patch } : v))
     );
@@ -289,7 +322,7 @@ export default function ProductEditModal({
     for (let i = 0; i < variantDrafts.length; i++) {
       const d = variantDrafts[i];
       if (!d) continue;
-      if (!d.color.trim()) {
+      if (!d.colorName.trim()) {
         setSaveError(`Вариант ${i + 1}: укажите цвет (текст).`);
         return;
       }
@@ -318,7 +351,7 @@ export default function ProductEditModal({
             return [main, ...images.filter((_, j) => j !== i)];
           })();
 
-    const variants = draftsToVariants(variantDrafts);
+    const variants = buildVariantsForApi(variantDrafts) as Product["variants"];
 
     setSaving(true);
     try {
@@ -568,7 +601,7 @@ export default function ProductEditModal({
               </div>
 
               <div className="admin-form-divider" />
-              <p className="admin-form-hint">Варианты: цвет (текст) и остатки</p>
+              <p className="admin-form-hint">Варианты: цвет (палитра + название) и остатки</p>
 
               {variantDrafts.map((draft, index) => (
                 <div key={draft.sid} className="admin-variant">
@@ -585,18 +618,53 @@ export default function ProductEditModal({
                     )}
                   </div>
                   <div className="admin-form-section">
-                    <label className="admin-field-label" htmlFor={`em-c-${draft.sid}`}>
-                      Цвет (текст)
-                    </label>
-                    <input
-                      id={`em-c-${draft.sid}`}
-                      className="admin-input"
-                      placeholder="чёрный, белый…"
-                      value={draft.color}
-                      onChange={(e) =>
-                        updateDraft(draft.sid, { color: e.target.value })
-                      }
-                    />
+                    <span className="admin-field-label">Цвет</span>
+                    <div className="admin-color-picker-row">
+                      <input
+                        type="color"
+                        className="admin-color-native"
+                        aria-label={`Цвет варианта ${index + 1}`}
+                        value={
+                          isValidHexColor(draft.colorHex)
+                            ? expandShortHex(draft.colorHex)
+                            : "#cccccc"
+                        }
+                        onChange={(e) =>
+                          updateDraft(draft.sid, { colorHex: e.target.value })
+                        }
+                      />
+                      <input
+                        id={`em-c-${draft.sid}`}
+                        className="admin-input admin-color-name-input"
+                        placeholder="например: светло-серый"
+                        value={draft.colorName}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          const mapped = lookupVariantHexByName(next);
+                          updateDraft(draft.sid, {
+                            colorName: next,
+                            ...(mapped ? { colorHex: mapped } : {}),
+                          });
+                        }}
+                      />
+                    </div>
+                    <div className="admin-color-presets" role="group" aria-label="Быстрый выбор цвета">
+                      {COLOR_PRESETS.map((p) => (
+                        <button
+                          key={p.name}
+                          type="button"
+                          className="admin-color-preset-btn"
+                          onClick={() =>
+                            updateDraft(draft.sid, {
+                              colorName: p.name,
+                              colorHex: p.hex,
+                            })
+                          }
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="admin-form-section">
                     <span className="admin-field-label">Размеры</span>

@@ -3,8 +3,13 @@ import axios from "axios";
 import { useAdminStore } from "../../store/admin.store";
 import { adminService } from "../../services/admin.service";
 import { PRODUCT_SIZES } from "../../constants/productCatalog";
-import type { Category, Variant } from "../../types";
+import type { Category, Product, Variant } from "../../types";
 import { categoryRoots } from "../../utils/categoryTree";
+import {
+  expandShortHex,
+  isValidHexColor,
+  lookupVariantHexByName,
+} from "../../utils/variantColor";
 const SIZE_OPTIONS = PRODUCT_SIZES;
 type SizeOption = (typeof SIZE_OPTIONS)[number];
 
@@ -15,9 +20,18 @@ type SizeRow = {
 
 type VariantDraft = {
   id: string;
-  color: string;
+  colorName: string;
+  colorHex: string;
   sizes: Record<SizeOption, SizeRow>;
 };
+
+const COLOR_PRESETS: ReadonlyArray<{ name: string; hex: string }> = [
+  { name: "черный", hex: "#000000" },
+  { name: "белый", hex: "#ffffff" },
+  { name: "серый", hex: "#808080" },
+  { name: "молочный", hex: "#fff8e7" },
+  { name: "темно-синий", hex: "#00008b" },
+];
 
 function newVariantId() {
   return globalThis.crypto?.randomUUID?.() ?? `v-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -28,18 +42,32 @@ function createVariantDraft(): VariantDraft {
   for (const s of SIZE_OPTIONS) {
     sizes[s] = { enabled: false, stock: "" };
   }
-  return { id: newVariantId(), color: "Чёрный", sizes };
+  return {
+    id: newVariantId(),
+    colorName: "Чёрный",
+    colorHex: "#000000",
+    sizes,
+  };
 }
 
-function draftsToVariants(drafts: VariantDraft[]): Variant[] {
+function buildVariantsForApi(drafts: VariantDraft[]): Variant[] {
   return drafts.map((d) => {
-    const color = d.color.trim();
+    const name = d.colorName.trim();
+    let hex = d.colorHex.trim();
+    if (!isValidHexColor(hex)) {
+      hex = lookupVariantHexByName(name) ?? "#cccccc";
+    } else {
+      hex = expandShortHex(hex);
+    }
     const sizes = SIZE_OPTIONS.filter((sz) => d.sizes[sz].enabled).map((sz) => {
       const st = d.sizes[sz].stock;
       const stock = typeof st === "number" && !Number.isNaN(st) ? st : 0;
       return { size: sz, stock };
     });
-    return { color, sizes };
+    return {
+      color: { name, hex },
+      sizes,
+    } as unknown as Variant;
   });
 }
 
@@ -94,7 +122,10 @@ const ProductForm = () => {
     }
   }, [categories, mainCategoryId, rootCategories, subCategoryId]);
 
-  const updateDraft = (id: string, patch: Partial<Pick<VariantDraft, "color">>) => {
+  const updateDraft = (
+    id: string,
+    patch: Partial<Pick<VariantDraft, "colorName" | "colorHex">>
+  ) => {
     setVariantDrafts((prev) =>
       prev.map((v) => (v.id === id ? { ...v, ...patch } : v))
     );
@@ -188,7 +219,7 @@ const ProductForm = () => {
     for (let i = 0; i < variantDrafts.length; i++) {
       const d = variantDrafts[i];
       if (!d) continue;
-      if (!d.color.trim()) {
+      if (!d.colorName.trim()) {
         setFormError(`Вариант ${i + 1}: укажите название цвета (текст).`);
         return;
       }
@@ -207,7 +238,7 @@ const ProductForm = () => {
       }
     }
 
-    const variants = draftsToVariants(variantDrafts);
+    const variants = buildVariantsForApi(variantDrafts);
 
     if (!subCategoryId) {
       setFormError("Выберите подкатегорию.");
@@ -229,7 +260,7 @@ const ProductForm = () => {
     };
 
     try {
-      await addProduct(data);
+      await addProduct(data as Product);
       setFormError(null);
       setName("");
       setDescription("");
@@ -453,17 +484,54 @@ const ProductForm = () => {
             </div>
 
             <div className="admin-form-section">
-              <label className="admin-field-label" htmlFor={`pf-color-${draft.id}`}>
-                Цвет (название)
-              </label>
-              <input
-                id={`pf-color-${draft.id}`}
-                className="admin-input"
-                placeholder="Например: чёрный, белый"
-                value={draft.color}
-                onChange={(e) => updateDraft(draft.id, { color: e.target.value })}
-                autoComplete="off"
-              />
+              <span className="admin-field-label">Цвет</span>
+              <div className="admin-color-picker-row">
+                <input
+                  type="color"
+                  className="admin-color-native"
+                  aria-label={`Цвет варианта ${index + 1}`}
+                  value={
+                    isValidHexColor(draft.colorHex)
+                      ? expandShortHex(draft.colorHex)
+                      : "#cccccc"
+                  }
+                  onChange={(e) =>
+                    updateDraft(draft.id, { colorHex: e.target.value })
+                  }
+                />
+                <input
+                  id={`pf-color-${draft.id}`}
+                  className="admin-input admin-color-name-input"
+                  placeholder="например: светло-серый"
+                  value={draft.colorName}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    const mapped = lookupVariantHexByName(next);
+                    updateDraft(draft.id, {
+                      colorName: next,
+                      ...(mapped ? { colorHex: mapped } : {}),
+                    });
+                  }}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="admin-color-presets" role="group" aria-label="Быстрый выбор цвета">
+                {COLOR_PRESETS.map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    className="admin-color-preset-btn"
+                    onClick={() =>
+                      updateDraft(draft.id, {
+                        colorName: p.name,
+                        colorHex: p.hex,
+                      })
+                    }
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="admin-form-section">

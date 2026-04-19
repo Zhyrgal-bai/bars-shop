@@ -22,6 +22,11 @@ import {
 } from "../bot/bot.js";
 import { prisma } from "./db.js";
 import {
+  expandShortHex,
+  isValidHexColor,
+  lookupVariantHexByName,
+} from "../shared/variantColorPresets.js";
+import {
   clearPaymentFieldByRowId,
   listPaymentDetailsFromDb,
   upsertPaymentSettings,
@@ -100,8 +105,47 @@ async function computeOrderTotalFromBody(
 
 type CleanVariantInput = {
   color: string;
+  colorHex: string | null;
   sizes: { size: string; stock: number }[];
 };
+
+function parseVariantColorInput(
+  raw: unknown,
+  index: number
+): { name: string; hex: string | null } | { error: string } {
+  const n = index + 1;
+  if (raw == null || raw === "") {
+    return { error: `Вариант ${n}: укажите цвет` };
+  }
+  if (typeof raw === "string") {
+    const name = raw.trim();
+    if (!name) {
+      return { error: `Вариант ${n}: укажите название цвета` };
+    }
+    return { name, hex: lookupVariantHexByName(name) };
+  }
+  if (typeof raw === "object" && raw !== null && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    const name = String(o.name ?? "").trim();
+    if (!name) {
+      return { error: `Вариант ${n}: укажите название цвета` };
+    }
+    let hex: string | null = null;
+    const hexRaw = o.hex;
+    if (typeof hexRaw === "string" && hexRaw.trim() !== "") {
+      const h = expandShortHex(hexRaw.trim());
+      if (!isValidHexColor(h)) {
+        return { error: `Вариант ${n}: неверный HEX` };
+      }
+      hex = expandShortHex(h);
+    }
+    if (!hex) {
+      hex = lookupVariantHexByName(name);
+    }
+    return { name, hex };
+  }
+  return { error: `Вариант ${n}: неверный формат цвета` };
+}
 
 type SeedCategoryNode = {
   name: string;
@@ -219,15 +263,15 @@ function normalizeVariantsInput(
   const out: CleanVariantInput[] = [];
   for (let i = 0; i < raw.length; i++) {
     const v = raw[i] as { color?: unknown; sizes?: unknown };
-    const color = String(v?.color ?? "").trim();
-    if (!color) {
-      return { error: `Вариант ${i + 1}: укажите название цвета` };
+    const col = parseVariantColorInput(v?.color, i);
+    if ("error" in col) {
+      return { error: col.error };
     }
     const parsed = parseVariantSizes(v?.sizes, i);
     if ("error" in parsed) {
       return { error: parsed.error };
     }
-    out.push({ color, sizes: parsed });
+    out.push({ color: col.name, colorHex: col.hex, sizes: parsed });
   }
   return out;
 }
@@ -652,6 +696,7 @@ app.post("/products", async (req: Request, res: Response) => {
         variants: {
           create: cleanVariants.map((v) => ({
             color: v.color,
+            colorHex: v.colorHex,
             sizes: {
               create: v.sizes.map((s) => ({
                 size: s.size,
@@ -1388,17 +1433,19 @@ app.put("/products/:id", async (req: Request, res: Response) => {
         });
         await tx.variant.deleteMany({ where: { productId: id } });
         for (const v of cleanVariants) {
-          await tx.variant.create({
-            data: {
-              productId: id,
-              color: v.color,
-              sizes: {
-                create: v.sizes.map((s) => ({
-                  size: s.size,
-                  stock: s.stock,
-                })),
-              },
+          const variantData = {
+            productId: id,
+            color: v.color,
+            colorHex: v.colorHex,
+            sizes: {
+              create: v.sizes.map((s) => ({
+                size: s.size,
+                stock: s.stock,
+              })),
             },
+          };
+          await tx.variant.create({
+            data: variantData as Prisma.VariantUncheckedCreateInput,
           });
         }
       }

@@ -57,6 +57,7 @@ export function getNormalizedVariants(product: Product): Variant[] {
   if (product.colors && product.colors.length > 0) {
     return product.colors.map((c) => ({
       color: c.name,
+      colorHex: c.hex,
       sizes: cloneSizes(sizes),
     }));
   }
@@ -64,6 +65,7 @@ export function getNormalizedVariants(product: Product): Variant[] {
   return [
     {
       color: DEFAULT_COLOR_NAME,
+      colorHex: DEFAULT_COLOR_HEX,
       sizes: cloneSizes(sizes),
     },
   ];

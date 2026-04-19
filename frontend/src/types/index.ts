@@ -6,7 +6,10 @@ export interface Size {
 
 export interface Variant {
   id?: number;
+  /** Название оттенка (как в БД). */
   color: string;
+  /** Явный HEX с палитры / color picker; если null — подбираем по названию. */
+  colorHex?: string | null;
   sizes: Size[];
 }
 

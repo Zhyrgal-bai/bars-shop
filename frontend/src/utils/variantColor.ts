@@ -1,36 +1,56 @@
-/** CSS background for color swatch: HEX or named / text → stable HSL fallback. */
+import { expandShortHex, isValidHexColor, lookupVariantHexByName } from "@repo-shared/variantColorPresets";
+
+export {
+  VARIANT_COLOR_MAP,
+  expandShortHex,
+  isValidHexColor,
+  lookupVariantHexByName,
+} from "@repo-shared/variantColorPresets";
+
+export type VariantColorFields = {
+  color: string;
+  colorHex?: string | null;
+};
+
+export function variantColorName(v: {
+  color: string | { name?: string } | unknown;
+}): string {
+  const c = v.color;
+  if (typeof c === "string") return c;
+  if (c && typeof c === "object" && "name" in (c as object)) {
+    return String((c as { name: unknown }).name ?? "").trim();
+  }
+  return "";
+}
+
+/** HEX для `<input type="color" />` (только #rrggbb). */
+export function resolvePickerHex(v: VariantColorFields): string {
+  if (v.colorHex && isValidHexColor(v.colorHex)) {
+    return expandShortHex(v.colorHex);
+  }
+  const mapped = lookupVariantHexByName(v.color);
+  if (mapped) return expandShortHex(mapped);
+  const c = v.color.trim();
+  if (isValidHexColor(c)) return expandShortHex(c);
+  return "#cccccc";
+}
+
+/** Фон свотча / CSS (HEX или HSL-фолбэк по названию). */
+export function getVariantCssBackground(v: VariantColorFields): string {
+  if (v.colorHex && isValidHexColor(v.colorHex)) {
+    return expandShortHex(v.colorHex);
+  }
+  return variantColorToCss(v.color);
+}
+
+/** Легаси: строка названия или HEX → CSS. */
 export function variantColorToCss(color: string): string {
   const c = color.trim();
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c)) {
-    return c.length === 4
-      ? `#${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`
-      : c;
+  if (isValidHexColor(c)) {
+    return expandShortHex(c);
   }
-  const lower = c.toLowerCase();
-  const named: Record<string, string> = {
-    black: "#1a1a1a",
-    white: "#f5f5f5",
-    red: "#c62828",
-    green: "#2e7d32",
-    blue: "#1565c0",
-    yellow: "#f9a825",
-    orange: "#ef6c00",
-    purple: "#6a1b9a",
-    pink: "#ad1457",
-    gray: "#757575",
-    grey: "#757575",
-    brown: "#5d4037",
-    чёрный: "#1a1a1a",
-    черный: "#1a1a1a",
-    белый: "#f5f5f5",
-    красный: "#c62828",
-    зелёный: "#2e7d32",
-    зеленый: "#2e7d32",
-    синий: "#1565c0",
-    жёлтый: "#f9a825",
-    желтый: "#f9a825",
-  };
-  if (named[lower]) return named[lower]!;
+  const fromMap = lookupVariantHexByName(c);
+  if (fromMap) return expandShortHex(fromMap);
 
   let h = 0;
   for (let i = 0; i < c.length; i++) {

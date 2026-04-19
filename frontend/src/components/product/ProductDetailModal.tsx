@@ -7,7 +7,7 @@ import {
   getNormalizedVariants,
   getProductImages,
 } from "../../utils/product";
-import { variantColorToCss } from "../../utils/variantColor";
+import { getVariantCssBackground } from "../../utils/variantColor";
 import "./ProductDetailModal.css";
 
 type ProductDetailModalProps = {
@@ -223,7 +223,7 @@ export default function ProductDetailModal({
                     <div className="pdm-variant-color">
                       <span
                         className="pdm-variant-swatch"
-                        style={{ background: variantColorToCss(v.color) }}
+                        style={{ background: getVariantCssBackground(v) }}
                         title={v.color}
                         aria-hidden
                       />

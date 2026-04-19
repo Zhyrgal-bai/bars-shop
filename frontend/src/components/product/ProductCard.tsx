@@ -8,7 +8,7 @@ import {
   getPrimaryImage,
   isOutOfStock,
 } from "../../utils/product";
-import { variantColorToCss } from "../../utils/variantColor";
+import { getVariantCssBackground } from "../../utils/variantColor";
 import "../ui/ProductCard.css";
 
 type Props = {
@@ -36,7 +36,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
     if (product.variants && product.variants.length > 0) {
       return product.variants.map((v) => ({
         name: v.color,
-        hex: variantColorToCss(v.color),
+        hex: getVariantCssBackground(v),
       }));
     }
     return [{ name: "default", hex: "#ffffff" }];

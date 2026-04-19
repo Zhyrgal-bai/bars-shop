@@ -72,9 +72,12 @@ export default function FloatingCart({
   onOpen,
 }: Props) {
   const minYRef = useRef(HEADER_FALLBACK_BOTTOM);
-  const [pos, setPos] = useState<Pos>(() => loadPos(minYRef.current));
-  const posRef = useRef(pos);
-  posRef.current = pos;
+  const [pos, setPos] = useState<Pos>(() => loadPos(HEADER_FALLBACK_BOTTOM));
+  const posRef = useRef<Pos>(pos);
+
+  useEffect(() => {
+    posRef.current = pos;
+  }, [pos]);
 
   const dragRef = useRef<{
     startClientX: number;

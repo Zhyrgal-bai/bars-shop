@@ -79,6 +79,10 @@ model Order {
   customerPhone String? // телефон из формы оформления
   tracking  String? // статус доставки / комментарий для клиента
 
+  address String? // полный адрес доставки (текст)
+  lat     Float? // широта (карта / геолокация)
+  lng     Float? // долгота
+
   receiptUrl   String? // ссылка на фото или pdf
   receiptType  String? // "image" | "pdf"
 

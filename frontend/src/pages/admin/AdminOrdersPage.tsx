@@ -173,6 +173,15 @@ export default function AdminOrdersPage() {
             const hasReceipt = receiptUrl.length > 0;
             const payMethod = (order.paymentMethod ?? "receipt").toLowerCase();
             const isFinik = payMethod === "finik";
+            const hasCoords =
+              order.lat != null &&
+              order.lng != null &&
+              Number.isFinite(order.lat) &&
+              Number.isFinite(order.lng);
+            const deliveryAddress =
+              typeof order.address === "string" && order.address.trim() !== ""
+                ? order.address.trim()
+                : null;
             return (
               <article key={order.id} className="admin-order-card">
                 <div className="admin-order-card__top">
@@ -207,6 +216,53 @@ export default function AdminOrdersPage() {
                     </dd>
                   </div>
                 </dl>
+                <div className="admin-order-card__delivery">
+                  <p className="admin-order-card__delivery-title">📍 Доставка</p>
+                  <p className="admin-order-card__delivery-address">
+                    <span className="admin-order-card__delivery-label">Адрес:</span>{" "}
+                    {deliveryAddress ?? "Не указан"}
+                  </p>
+                  {hasCoords ? (
+                    <>
+                      <p className="admin-order-card__delivery-coords">
+                        {order.lat?.toFixed(6)}, {order.lng?.toFixed(6)}
+                      </p>
+                      <div className="admin-order-card__delivery-links">
+                        <a
+                          className="admin-order-card__delivery-link"
+                          href={`https://2gis.kg/geo/${order.lng},${order.lat}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          🗺 Открыть в 2GIS
+                        </a>
+                        <a
+                          className="admin-order-card__delivery-link"
+                          href={`https://www.google.com/maps?q=${order.lat},${order.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          🌍 Открыть в Google Maps
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-order-card__delivery-copy"
+                        onClick={async () => {
+                          const text = `${String(order.lat)},${String(order.lng)}`;
+                          try {
+                            await navigator.clipboard.writeText(text);
+                            alert("Скопировано");
+                          } catch {
+                            alert(text);
+                          }
+                        }}
+                      >
+                        📋 Скопировать координаты
+                      </button>
+                    </>
+                  ) : null}
+                </div>
                 {hasReceipt && (
                   <div className="admin-order-card__receipt">
                     <p className="admin-order-card__receipt-title">Чек</p>

@@ -87,6 +87,9 @@ export type AdminOrderListItem = {
   statusText: string;
   total: number;
   paymentMethod?: string;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   tracking?: string | null;
   receiptUrl?: string | null;
   receiptType?: string | null;

@@ -1100,6 +1100,14 @@ async function fetchAdminOrdersPayload() {
     const paymentMethod =
       (o as { paymentMethod?: string | null }).paymentMethod?.trim() ||
       "receipt";
+    const address =
+      typeof o.address === "string" && o.address.trim() !== ""
+        ? o.address.trim()
+        : null;
+    const lat =
+      o.lat != null && Number.isFinite(Number(o.lat)) ? Number(o.lat) : null;
+    const lng =
+      o.lng != null && Number.isFinite(Number(o.lng)) ? Number(o.lng) : null;
     return {
       id: o.id,
       name: o.user.name?.trim() || "Гость",
@@ -1111,6 +1119,9 @@ async function fetchAdminOrdersPayload() {
       receiptUrl,
       receiptType,
       paymentMethod,
+      address,
+      lat,
+      lng,
     };
   });
 }
@@ -1282,6 +1293,28 @@ app.post("/orders", async (req: Request, res: Response) => {
     (body as { user?: { name?: unknown } }).user?.name
   );
   const addressSanitized = cleanInput((body as { address?: unknown }).address);
+  const orderAddress =
+    addressSanitized !== "" ? addressSanitized.slice(0, 2000) : null;
+
+  const rawLat = (body as { lat?: unknown }).lat;
+  const rawLng = (body as { lng?: unknown }).lng;
+  let orderLat: number | null = null;
+  let orderLng: number | null = null;
+  if (rawLat != null && rawLng != null) {
+    const la = Number(rawLat);
+    const lo = Number(rawLng);
+    if (
+      Number.isFinite(la) &&
+      Number.isFinite(lo) &&
+      la >= -90 &&
+      la <= 90 &&
+      lo >= -180 &&
+      lo <= 180
+    ) {
+      orderLat = la;
+      orderLng = lo;
+    }
+  }
 
   const totalComputed = await computeOrderTotalFromBody(body);
   if (!totalComputed.ok) {
@@ -1371,6 +1404,9 @@ app.post("/orders", async (req: Request, res: Response) => {
           total: orderTotal,
           status: "NEW",
           customerPhone: customerPhoneValue,
+          address: orderAddress,
+          lat: orderLat,
+          lng: orderLng,
           paymentMethod,
           /** Finik: id выставится после создания (мок или реальный API). */
           paymentId: paymentMethod === "finik" ? null : paymentId,
@@ -1412,7 +1448,8 @@ app.post("/orders", async (req: Request, res: Response) => {
     }
 
     const address =
-      addressSanitized !== "" ? addressSanitized : "—";
+      orderForResponse.address?.trim() ||
+      (addressSanitized !== "" ? addressSanitized : "—");
     const displayName =
       user.name?.trim() || userNameSanitized || "Гость";
     const phone =

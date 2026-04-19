@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { useCartStore } from "../store/useCartStore";
 import { api } from "../services/api";
 import { fetchMyOrders } from "../services/myOrdersApi";
 import { getTelegramUser, getTelegramWebAppUserId } from "../utils/telegram";
 import { cleanInput, validateKgPhone } from "../utils/orderInputSanitize";
+import MapPicker from "../components/checkout/MapPicker";
 import "../components/ui/CheckoutPage.css";
 
 type CheckoutPaymentMethod = "finik" | "receipt";
@@ -46,6 +47,10 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [deliveryType, setDeliveryType] = useState("delivery");
   const [paymentMethod, setPaymentMethod] =
     useState<CheckoutPaymentMethod>("receipt");
@@ -128,6 +133,26 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
     setPromoPreview({ newTotal: data.newTotal, discount: data.discount });
     return data.newTotal;
   };
+
+  const getLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert("Геолокация не поддерживается");
+      return;
+    }
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude);
+        setLng(pos.coords.longitude);
+        setLoadingLocation(false);
+      },
+      () => {
+        alert("Не удалось получить местоположение");
+        setLoadingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 60_000 }
+    );
+  }, []);
 
   const handleCheckPromo = async () => {
     if (!promo.trim()) {
@@ -216,6 +241,7 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
         total: payTotal,
         deliveryType,
         address: orderData.address,
+        ...(lat != null && lng != null ? { lat, lng } : {}),
         promo: promoCode,
         comment: commentClean,
         paymentMethod,
@@ -233,6 +259,8 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
         setPhone("");
         setPhoneFromSavedOrder(false);
         setAddress("");
+        setLat(null);
+        setLng(null);
         setPromo("");
         setComment("");
         setPaymentMethod("receipt");
@@ -250,6 +278,8 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
       setPhone("");
       setPhoneFromSavedOrder(false);
       setAddress("");
+      setLat(null);
+      setLng(null);
       setPromo("");
       setComment("");
       setPaymentMethod("receipt");
@@ -309,11 +339,57 @@ export default function CheckoutPage({ onBack, onOrderSuccess }: Props) {
             autoComplete="tel"
           />
         )}
-        <input
-          placeholder="Адрес доставки"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
+        <div className="checkout-address-block">
+          <input
+            placeholder="Адрес доставки"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            autoComplete="street-address"
+          />
+          <div className="checkout-loc-actions">
+            <button
+              type="button"
+              className="checkout-loc-btn"
+              onClick={() => getLocation()}
+              disabled={loadingLocation || submitting}
+            >
+              {loadingLocation ? "…" : "📍 Определить адрес"}
+            </button>
+            <button
+              type="button"
+              className="checkout-loc-btn checkout-loc-btn--map"
+              onClick={() => setShowMapPicker((v) => !v)}
+              disabled={submitting}
+              aria-expanded={showMapPicker}
+            >
+              {showMapPicker ? "🗺 Скрыть карту" : "🗺 Выбрать на карте"}
+            </button>
+          </div>
+          {showMapPicker && (
+            <div className="checkout-map-wrap">
+              <MapPicker
+                lat={lat}
+                lng={lng}
+                setLat={(v) => setLat(v)}
+                setLng={(v) => setLng(v)}
+                setAddress={setAddress}
+              />
+              <p className="checkout-map-hint">
+                Нажмите на карту, чтобы поставить точку и подставить адрес
+              </p>
+            </div>
+          )}
+          {loadingLocation && (
+            <p className="checkout-loc-status" role="status" aria-live="polite">
+              Определяем местоположение...
+            </p>
+          )}
+          {!loadingLocation && lat != null && lng != null && (
+            <p className="checkout-loc-coords" aria-live="polite">
+              Координаты сохранены для заказа ({lat.toFixed(5)}, {lng.toFixed(5)})
+            </p>
+          )}
+        </div>
 
         <select
           value={deliveryType}

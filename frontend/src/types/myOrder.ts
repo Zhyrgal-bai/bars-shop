@@ -5,6 +5,9 @@ export type MyOrderRow = {
   status: string;
   paymentMethod?: string;
   paymentId?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   tracking?: string | null;
   customerPhone?: string | null;
   receiptUrl?: string | null;

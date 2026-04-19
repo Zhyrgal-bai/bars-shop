@@ -162,6 +162,54 @@ async function getDefaultLeafCategoryId(): Promise<number | null> {
   return leaf?.id ?? null;
 }
 
+function parseVariantSizes(
+  sizesRaw: unknown,
+  variantIndex: number
+): { size: string; stock: number }[] | { error: string } {
+  const sizes: { size: string; stock: number }[] = [];
+
+  if (Array.isArray(sizesRaw)) {
+    if (sizesRaw.length === 0) {
+      return { error: `Вариант ${variantIndex + 1}: нужны размеры` };
+    }
+    for (const s of sizesRaw) {
+      const z = s as { size?: unknown; stock?: unknown };
+      const size = String(z?.size ?? "").trim();
+      const stock = Number(z?.stock);
+      if (!size || !Number.isFinite(stock) || stock < 0) {
+        return {
+          error: `Вариант ${variantIndex + 1}: неверные размер или количество`,
+        };
+      }
+      if (stock > 0) {
+        sizes.push({ size, stock: Math.round(stock) });
+      }
+    }
+  } else if (sizesRaw != null && typeof sizesRaw === "object") {
+    for (const [key, val] of Object.entries(sizesRaw as Record<string, unknown>)) {
+      const size = String(key ?? "").trim();
+      const stock = Number(val);
+      if (!size || !Number.isFinite(stock) || stock < 0) {
+        return {
+          error: `Вариант ${variantIndex + 1}: неверные размер или количество`,
+        };
+      }
+      if (stock > 0) {
+        sizes.push({ size, stock: Math.round(stock) });
+      }
+    }
+  } else {
+    return { error: `Вариант ${variantIndex + 1}: нужны размеры` };
+  }
+
+  if (sizes.length === 0) {
+    return {
+      error: `Вариант ${variantIndex + 1}: укажите остаток хотя бы для одного размера`,
+    };
+  }
+  return sizes;
+}
+
 function normalizeVariantsInput(
   raw: unknown
 ): CleanVariantInput[] | { error: string } {
@@ -175,28 +223,11 @@ function normalizeVariantsInput(
     if (!color) {
       return { error: `Вариант ${i + 1}: укажите название цвета` };
     }
-    const sizesRaw = v?.sizes;
-    if (!Array.isArray(sizesRaw) || sizesRaw.length === 0) {
-      return { error: `Вариант ${i + 1}: нужны размеры` };
+    const parsed = parseVariantSizes(v?.sizes, i);
+    if ("error" in parsed) {
+      return { error: parsed.error };
     }
-    const sizes: { size: string; stock: number }[] = [];
-    for (const s of sizesRaw) {
-      const z = s as { size?: unknown; stock?: unknown };
-      const size = String(z?.size ?? "").trim();
-      const stock = Number(z?.stock);
-      if (!size || !Number.isFinite(stock) || stock < 0) {
-        return { error: `Вариант ${i + 1}: неверные размер или количество` };
-      }
-      if (stock > 0) {
-        sizes.push({ size, stock: Math.round(stock) });
-      }
-    }
-    if (sizes.length === 0) {
-      return {
-        error: `Вариант ${i + 1}: укажите остаток хотя бы для одного размера`,
-      };
-    }
-    out.push({ color, sizes });
+    out.push({ color, sizes: parsed });
   }
   return out;
 }
@@ -609,7 +640,10 @@ app.post("/products", async (req: Request, res: Response) => {
         price: Number(price),
         image: primaryImage,
         images: imageList,
-        description: description != null ? String(description) : "",
+        description:
+          description != null && String(description).trim() !== ""
+            ? String(description).trim()
+            : null,
         categoryId: normalizedCategoryId,
         isNew: Boolean(isNew),
         isPopular: Boolean(isPopular),

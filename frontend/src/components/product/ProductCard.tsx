@@ -8,6 +8,7 @@ import {
   getPrimaryImage,
   isOutOfStock,
 } from "../../utils/product";
+import { variantColorToCss } from "../../utils/variantColor";
 import "../ui/ProductCard.css";
 
 type Props = {
@@ -18,33 +19,50 @@ type Props = {
 };
 
 export default function ProductCard({ product, showToast, onOpenDetail }: Props) {
-  const hasCustomColors = Boolean(product.colors && product.colors.length > 0);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
-  const colors: ProductColor[] = useMemo(
-    () =>
-      product.colors && product.colors.length > 0
-        ? product.colors
-        : [{ name: "default", hex: "#ffffff" }],
-    [product]
+  const hasCustomColors = Boolean(
+    (product.colors && product.colors.length > 0) ||
+      (product.variants && product.variants.length > 0)
   );
+
+  const colors: ProductColor[] = useMemo(() => {
+    if (product.colors && product.colors.length > 0) {
+      return product.colors;
+    }
+    if (product.variants && product.variants.length > 0) {
+      return product.variants.map((v) => ({
+        name: v.color,
+        hex: variantColorToCss(v.color),
+      }));
+    }
+    return [{ name: "default", hex: "#ffffff" }];
+  }, [product]);
 
   const sizes = useMemo<Size[]>(() => {
     if (product.sizes && product.sizes.length > 0) {
       return product.sizes;
+    }
+    if (product.variants && product.variants.length > 0) {
+      const v = selectedColor
+        ? product.variants.find((x) => x.color === selectedColor)
+        : product.variants[0];
+      if (v?.sizes?.length) {
+        return v.sizes;
+      }
+      return [];
     }
     const v0 = getNormalizedVariants(product)[0];
     if (v0?.sizes?.length) {
       return v0.sizes;
     }
     return [{ size: "M", stock: 10 }];
-  }, [product]);
+  }, [product, selectedColor]);
 
   const outOfStock = isOutOfStock(product);
-
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
 
   const images = useMemo(
     () =>
@@ -55,7 +73,14 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
   );
 
   const lineColor = useMemo(() => {
-    if (hasCustomColors) return selectedColor;
+    if (hasCustomColors) {
+      return (
+        selectedColor ??
+        product.variants?.[0]?.color ??
+        getNormalizedVariants(product)[0]?.color ??
+        null
+      );
+    }
     return getNormalizedVariants(product)[0]?.color ?? "default";
   }, [hasCustomColors, selectedColor, product]);
 
@@ -67,7 +92,16 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
     setSelectedSize(null);
     setSelectedColor(null);
     setCurrentIndex(0);
-  }, [product]);
+  }, [product.id]);
+
+  useEffect(() => {
+    const v = product.variants;
+    if (!v?.length) return;
+    setSelectedColor((prev) => {
+      if (prev && v.some((x) => x.color === prev)) return prev;
+      return v[0]!.color;
+    });
+  }, [product.id, product.variants?.length, product.variants]);
 
   useEffect(() => {
     setCurrentIndex((i) =>
@@ -120,7 +154,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
     !outOfStock &&
     selectedSize !== null &&
     selectedStock > 0 &&
-    (!hasCustomColors || selectedColor !== null);
+    (!hasCustomColors || lineColor !== null);
 
   const handleAddToCart = () => {
     if (!canAddToCart || lineColor === null) return;

@@ -7,6 +7,7 @@ import {
   getNormalizedVariants,
   getProductImages,
 } from "../../utils/product";
+import { variantColorToCss } from "../../utils/variantColor";
 import "./ProductDetailModal.css";
 
 type ProductDetailModalProps = {
@@ -206,7 +207,9 @@ export default function ProductDetailModal({
               )}
             </div>
 
-            <p className="pdm-desc">
+            <p
+              className={`pdm-desc${product.description?.trim() ? "" : " pdm-desc--empty"}`}
+            >
               {product.description?.trim()
                 ? product.description
                 : "Описание отсутствует"}
@@ -216,8 +219,16 @@ export default function ProductDetailModal({
               <>
                 <h3 className="pdm-section-title">Варианты</h3>
                 {variants.map((v, i) => (
-                  <div key={i} className="pdm-variant">
-                    <div className="pdm-variant-color">{v.color}</div>
+                  <div key={v.id ?? `v-${i}-${v.color}`} className="pdm-variant">
+                    <div className="pdm-variant-color">
+                      <span
+                        className="pdm-variant-swatch"
+                        style={{ background: variantColorToCss(v.color) }}
+                        title={v.color}
+                        aria-hidden
+                      />
+                      <span>{v.color}</span>
+                    </div>
                     <div className="pdm-sizes">
                       {v.sizes?.length ? (
                         v.sizes.map((s) => (

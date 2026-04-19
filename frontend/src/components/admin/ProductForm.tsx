@@ -47,6 +47,7 @@ const ProductForm = () => {
   const { addProduct } = useAdminStore();
 
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number | "">("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -223,7 +224,7 @@ const ProductForm = () => {
       isPopular,
       isSale,
       discountPercent: disc,
-      description: "",
+      description: description.trim(),
       variants,
     };
 
@@ -231,6 +232,7 @@ const ProductForm = () => {
       await addProduct(data);
       setFormError(null);
       setName("");
+      setDescription("");
       setPrice("");
       setImageUrls([]);
       setDiscountPercent("");
@@ -272,6 +274,20 @@ const ProductForm = () => {
           onChange={(e) => setName(e.target.value)}
           className="admin-input"
           autoComplete="off"
+        />
+      </div>
+
+      <div className="admin-form-section">
+        <label className="admin-field-label" htmlFor="pf-desc">
+          Описание
+        </label>
+        <textarea
+          id="pf-desc"
+          className="admin-input admin-textarea"
+          rows={4}
+          placeholder="Описание товара"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
         />
       </div>
 

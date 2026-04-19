@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminService } from "../../services/admin.service";
 import { PRODUCT_SIZES } from "../../constants/productCatalog";
 import type { Category, Product, Variant } from "../../types";
 import { getProductImages } from "../../utils/product";
+import { categoryRoots } from "../../utils/categoryTree";
 
 const SIZE_OPTIONS = PRODUCT_SIZES;
 type SizeOption = (typeof SIZE_OPTIONS)[number];
@@ -94,6 +95,8 @@ export default function ProductEditModal({
     createEmptyVariant(),
   ]);
 
+  const rootCategories = useMemo(() => categoryRoots(categories), [categories]);
+
   const resetFromProduct = useCallback((p: Product) => {
     setName(p.name);
     setPrice(p.price);
@@ -122,15 +125,41 @@ export default function ProductEditModal({
       try {
         const tree = await adminService.getCategories();
         setCategories(tree);
-        setMainCategoryId((prev) => (prev === "" ? (tree[0]?.id ?? "") : prev));
+        const roots = categoryRoots(tree);
+        setMainCategoryId((prev) => (prev === "" ? (roots[0]?.id ?? "") : prev));
         setSubCategoryId((prev) =>
-          prev === "" ? (tree[0]?.children?.[0]?.id ?? "") : prev
+          prev === "" ? (roots[0]?.children?.[0]?.id ?? "") : prev
         );
       } catch (e) {
         console.error(e);
       }
     })();
   }, [open]);
+
+  useEffect(() => {
+    if (!open || categories.length === 0 || mainCategoryId === "") return;
+    const isRoot = rootCategories.some((r) => r.id === mainCategoryId);
+    if (!isRoot) {
+      const leaf = categories.find((c) => c.id === mainCategoryId);
+      const parentId = leaf?.parentId ?? leaf?.parent?.id;
+      if (parentId != null && rootCategories.some((r) => r.id === parentId)) {
+        setMainCategoryId(parentId);
+        return;
+      }
+      const fallback = rootCategories[0]?.id ?? "";
+      setMainCategoryId(fallback);
+      return;
+    }
+    const root = rootCategories.find((r) => r.id === mainCategoryId);
+    const kids = root?.children ?? [];
+    if (kids.length === 0) {
+      setSubCategoryId("");
+      return;
+    }
+    if (!kids.some((k) => k.id === subCategoryId)) {
+      setSubCategoryId(kids[0]!.id);
+    }
+  }, [open, categories, mainCategoryId, rootCategories, subCategoryId]);
 
   useEffect(() => {
     if (!open || productId == null) {
@@ -420,11 +449,11 @@ export default function ProductEditModal({
                   onChange={(e) => {
                     const nextMainId = Number(e.target.value);
                     setMainCategoryId(nextMainId);
-                    const nextMain = categories.find((c) => c.id === nextMainId);
+                    const nextMain = rootCategories.find((c) => c.id === nextMainId);
                     setSubCategoryId(nextMain?.children?.[0]?.id ?? "");
                   }}
                 >
-                  {categories.map((c) => (
+                  {rootCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
@@ -439,9 +468,13 @@ export default function ProductEditModal({
                   id="em-sub-cat"
                   className="admin-select"
                   value={subCategoryId}
-                  onChange={(e) => setSubCategoryId(Number(e.target.value))}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSubCategoryId(v === "" ? "" : Number(v));
+                  }}
                 >
-                  {(categories.find((c) => c.id === mainCategoryId)?.children ?? []).map(
+                  <option value="">Выберите подкатегорию</option>
+                  {(rootCategories.find((c) => c.id === mainCategoryId)?.children ?? []).map(
                     (c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}

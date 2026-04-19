@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useAdminStore } from "../../store/admin.store";
 import { adminService } from "../../services/admin.service";
 import { PRODUCT_SIZES } from "../../constants/productCatalog";
 import type { Category, Variant } from "../../types";
+import { categoryRoots } from "../../utils/categoryTree";
 const SIZE_OPTIONS = PRODUCT_SIZES;
 type SizeOption = (typeof SIZE_OPTIONS)[number];
 
@@ -61,12 +62,15 @@ const ProductForm = () => {
   ]);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const rootCategories = useMemo(() => categoryRoots(categories), [categories]);
+
   useEffect(() => {
     void (async () => {
       try {
         const tree = await adminService.getCategories();
         setCategories(tree);
-        const firstMain = tree[0];
+        const roots = categoryRoots(tree);
+        const firstMain = roots[0];
         const firstSub = firstMain?.children?.[0];
         setMainCategoryId(firstMain?.id ?? "");
         setSubCategoryId(firstSub?.id ?? "");
@@ -75,6 +79,19 @@ const ProductForm = () => {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (categories.length === 0 || mainCategoryId === "") return;
+    const root = rootCategories.find((r) => r.id === mainCategoryId);
+    const kids = root?.children ?? [];
+    if (kids.length === 0) {
+      setSubCategoryId("");
+      return;
+    }
+    if (!kids.some((k) => k.id === subCategoryId)) {
+      setSubCategoryId(kids[0]!.id);
+    }
+  }, [categories, mainCategoryId, rootCategories, subCategoryId]);
 
   const updateDraft = (id: string, patch: Partial<Pick<VariantDraft, "color">>) => {
     setVariantDrafts((prev) =>
@@ -335,11 +352,11 @@ const ProductForm = () => {
           onChange={(e) => {
             const nextMainId = Number(e.target.value);
             setMainCategoryId(nextMainId);
-            const nextMain = categories.find((c) => c.id === nextMainId);
+            const nextMain = rootCategories.find((c) => c.id === nextMainId);
             setSubCategoryId(nextMain?.children?.[0]?.id ?? "");
           }}
         >
-          {categories.map((c) => (
+          {rootCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
@@ -354,9 +371,13 @@ const ProductForm = () => {
           id="pf-sub-category"
           className="admin-select"
           value={subCategoryId}
-          onChange={(e) => setSubCategoryId(Number(e.target.value))}
+          onChange={(e) => {
+            const v = e.target.value;
+            setSubCategoryId(v === "" ? "" : Number(v));
+          }}
         >
-          {(categories.find((c) => c.id === mainCategoryId)?.children ?? []).map(
+          <option value="">Выберите подкатегорию</option>
+          {(rootCategories.find((c) => c.id === mainCategoryId)?.children ?? []).map(
             (c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

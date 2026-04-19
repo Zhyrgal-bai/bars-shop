@@ -6,6 +6,7 @@ import ProductGrid from "../components/product/ProductGrid";
 import ProductDetailModal from "../components/product/ProductDetailModal";
 import Toast from "../components/ui/Toast";
 import { getWebAppUserId } from "../utils/telegramUserId";
+import { categoryRoots } from "../utils/categoryTree";
 import "../components/ui/HomePage.css";
 
 const FIRST_ORDER_PROMO = "BARS10";
@@ -87,15 +88,20 @@ export default function HomePage() {
     }
   };
 
+  const categoryFilterRoots = useMemo(
+    () => categoryRoots(categoryTree),
+    [categoryTree]
+  );
+
   const categories = useMemo(
     () => [
       "ВСЕ",
       "НОВИНКИ",
       "ПОПУЛЯРНОЕ",
       "СКИДКИ",
-      ...categoryTree.map((c) => c.name.toUpperCase()),
+      ...categoryFilterRoots.map((c) => c.name.toUpperCase()),
     ],
-    [categoryTree]
+    [categoryFilterRoots]
   );
 
   const filteredProducts = useMemo(() => {

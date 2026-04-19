@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminService } from "../../services/admin.service";
 import type { Category, Product } from "../../types";
 import { getPrimaryImage, getTotalStockSum } from "../../utils/product";
+import { categoryRoots } from "../../utils/categoryTree";
 import ProductEditModal from "../../components/admin/ProductEditModal";
 
 type SortMode = "default" | "price-asc" | "price-desc";
@@ -35,6 +36,8 @@ export default function AdminProductManagePage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const rootCategories = useMemo(() => categoryRoots(categories), [categories]);
 
   const filtered = useMemo(() => {
     let rows = [...products];
@@ -108,7 +111,7 @@ export default function AdminProductManagePage() {
           aria-label="Категория"
         >
           <option value="">Все категории</option>
-          {categories.map((c) => (
+          {rootCategories.map((c) => (
             <option key={c.id} value={c.name}>
               {c.name}
             </option>

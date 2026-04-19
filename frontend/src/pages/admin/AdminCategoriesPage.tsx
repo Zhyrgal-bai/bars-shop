@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminService } from "../../services/admin.service";
 import type { Category } from "../../types";
+import { categoryRoots } from "../../utils/categoryTree";
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -26,7 +27,8 @@ export default function AdminCategoriesPage() {
     void load();
   }, [load]);
 
-  const parentOptions = useMemo(() => categories, [categories]);
+  const rootCategories = useMemo(() => categoryRoots(categories), [categories]);
+  const parentOptions = rootCategories;
 
   const onCreate = async () => {
     if (!name.trim()) return;
@@ -103,7 +105,7 @@ export default function AdminCategoriesPage() {
 
       {!loading && (
         <div className="admin-dash-card">
-          {categories.map((main) => (
+          {rootCategories.map((main) => (
             <div key={main.id} className="admin-cat-tree">
               <div className="admin-cat-node">
                 <strong>{main.name}</strong>

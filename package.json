@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "npx prisma db push && npx prisma generate && tsx src/server/index.ts",
+    "start": "npx prisma db push --force-reset && npx prisma generate && tsx src/server/index.ts",
     "build": "npm install --prefix frontend && npm run build --prefix frontend",
     "seed": "tsx prisma/seed.ts"
   },

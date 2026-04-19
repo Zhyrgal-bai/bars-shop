@@ -5,6 +5,8 @@ export type MyOrderRow = {
   status: string;
   tracking?: string | null;
   customerPhone?: string | null;
+  receiptUrl?: string | null;
+  receiptType?: string | null;
   /** Present only if backend adds the field */
   createdAt?: string;
   items?: {

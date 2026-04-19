@@ -1,22 +1,26 @@
 .product-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
   overflow: hidden;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: all 0.2s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
 }
 
 .product-card:hover {
-  transform: scale(1.02);
+  transform: translateY(-2px);
   box-shadow:
-    0 10px 30px rgba(0,0,0,0.4),
-    0 0 10px rgba(255,45,45,0.2);
+    0 16px 40px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(220, 38, 38, 0.15);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .product-card:active {
@@ -296,10 +300,14 @@
 .product-add-btn,
 .add-button {
   width: auto;
-  padding: 4px 10px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 12px;
   font-size: 12px;
-  color: #ff2d2d;
-  background: rgba(255, 45, 45, 0.15);
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
 }
 
 .product-action-btn:hover,
@@ -310,7 +318,8 @@
 
 .product-add-btn:hover,
 .add-button:hover {
-  background: rgba(255, 45, 45, 0.3);
+  filter: brightness(1.06);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
 }
 
 .product-action-btn:active,

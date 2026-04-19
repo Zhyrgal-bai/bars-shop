@@ -7,6 +7,8 @@ import "./bars-shell.css";
 type HeaderProps = {
   menuOpen?: boolean;
   onMenuToggle?: () => void;
+  /** Красная точка на кнопке меню (например, есть заказы, требующие внимания). */
+  attentionDot?: boolean;
 };
 
 function telegramDisplayName(user: ReturnType<typeof getTelegramUser>): string | null {
@@ -17,7 +19,11 @@ function telegramDisplayName(user: ReturnType<typeof getTelegramUser>): string |
   return null;
 }
 
-export default function Header({ menuOpen = false, onMenuToggle }: HeaderProps) {
+export default function Header({
+  menuOpen = false,
+  onMenuToggle,
+  attentionDot = false,
+}: HeaderProps) {
   const user = useMemo(() => getTelegramUser(), []);
   const initial = telegramDisplayInitial(user);
   const displayName = useMemo(() => telegramDisplayName(user), [user]);
@@ -25,27 +31,29 @@ export default function Header({ menuOpen = false, onMenuToggle }: HeaderProps) 
   return (
     <header className="bars-header">
       <div className="bars-header__cell bars-header__cell--left">
-        <motion.button
-          type="button"
-          className={`bars-header__burger${menuOpen ? " bars-header__burger--open" : ""}`}
-          onClick={onMenuToggle}
-          aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
-          aria-expanded={menuOpen}
-          whileTap={{ scale: 0.94 }}
-        >
-          <span className="bars-header__burger-line" />
-          <span className="bars-header__burger-line" />
-          <span className="bars-header__burger-line" />
-        </motion.button>
+        <div className="bars-header__burger-wrap">
+          <motion.button
+            type="button"
+            className={`bars-header__burger${menuOpen ? " bars-header__burger--open" : ""}`}
+            onClick={onMenuToggle}
+            aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-expanded={menuOpen}
+            whileTap={{ scale: 0.94 }}
+          >
+            <span className="bars-header__burger-line" />
+            <span className="bars-header__burger-line" />
+            <span className="bars-header__burger-line" />
+          </motion.button>
+          {attentionDot ? (
+            <span className="bars-header__notify-dot" title="Есть уведомления" />
+          ) : null}
+        </div>
       </div>
 
       <h1 className="bars-header__logo">BARŚ</h1>
 
       <div className="bars-header__cell bars-header__cell--right">
         <div className="bars-header__user" title={displayName ?? undefined}>
-          {displayName ? (
-            <span className="bars-header__user-name">{displayName}</span>
-          ) : null}
           <div
             className="bars-header__mark"
             aria-hidden={displayName ? true : undefined}
@@ -62,6 +70,9 @@ export default function Header({ menuOpen = false, onMenuToggle }: HeaderProps) 
               initial
             )}
           </div>
+          {displayName ? (
+            <span className="bars-header__user-name">{displayName}</span>
+          ) : null}
         </div>
       </div>
     </header>

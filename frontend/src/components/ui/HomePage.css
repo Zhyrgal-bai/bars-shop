@@ -55,17 +55,19 @@
 
 .home-discount-banner__copy {
   flex-shrink: 0;
-  padding: 8px 14px;
+  min-height: 40px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(220, 38, 38, 0.85);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35);
   cursor: pointer;
-  transition: background 0.2s ease, opacity 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .home-discount-banner__copy:active {
@@ -152,19 +154,22 @@
 }
 
 .categories button {
-  padding: 6px 12px;
-  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 36px;
+  border-radius: 14px;
   border: none;
   background: rgba(255, 255, 255, 0.05);
   color: #9ca3af;
   font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .categories button:hover {
   background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .categories button:active {

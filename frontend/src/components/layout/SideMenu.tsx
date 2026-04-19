@@ -27,6 +27,8 @@ type SideMenuProps = {
   onNavToCart: () => void;
   /** Количество позиций в корзине (для бейджа в меню). */
   cartCount?: number;
+  /** Красная точка у «Мои заказы», если есть заказы, требующие внимания. */
+  myOrdersAttentionDot?: boolean;
   onNavToMyOrders: () => void;
   onNavToFaq: () => void;
   onNavToAdmin: (section: AdminSection) => void;
@@ -71,6 +73,7 @@ export default function SideMenu({
   onNavToHome,
   onNavToCart,
   cartCount = 0,
+  myOrdersAttentionDot = false,
   onNavToMyOrders,
   onNavToFaq,
   onNavToAdmin,
@@ -151,12 +154,15 @@ export default function SideMenu({
               <nav className="bars-drawer__nav" aria-label="Разделы">
                 <button
                   type="button"
-                  className={`bars-drawer__link${myOrdersActive ? " bars-drawer__link--active" : ""}`}
+                  className={`bars-drawer__link bars-drawer__link--orders${myOrdersActive ? " bars-drawer__link--active" : ""}`}
                   onClick={() => {
                     onNavToMyOrders();
                     onClose();
                   }}
                 >
+                  {myOrdersAttentionDot && !myOrdersActive ? (
+                    <span className="bars-drawer__orders-attention-dot" aria-hidden />
+                  ) : null}
                   <span className="bars-drawer__link-icon" aria-hidden>
                     📦
                   </span>

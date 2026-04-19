@@ -89,7 +89,7 @@ export default function AdminOrdersPage() {
 
   async function applyStatus(
     id: number,
-    status: "ACCEPTED" | "CONFIRMED" | "SHIPPED"
+    status: "ACCEPTED" | "CONFIRMED" | "SHIPPED" | "CANCELLED"
   ) {
     setBusyId(id);
     try {
@@ -169,6 +169,8 @@ export default function AdminOrdersPage() {
             const canon = canonicalStatus(order.status);
             const busy = busyId === order.id;
             const busyTr = busyTrackingId === order.id;
+            const receiptUrl = order.receiptUrl?.trim() ?? "";
+            const hasReceipt = receiptUrl.length > 0;
             return (
               <article key={order.id} className="admin-order-card">
                 <div className="admin-order-card__top">
@@ -197,6 +199,39 @@ export default function AdminOrdersPage() {
                     </dd>
                   </div>
                 </dl>
+                {hasReceipt && (
+                  <div className="admin-order-card__receipt">
+                    <p className="admin-order-card__receipt-title">Чек</p>
+                    {(order.receiptType ?? "").toLowerCase() === "pdf" ? (
+                      <a
+                        className="admin-order-card__receipt-link"
+                        href={receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        📄 Открыть PDF чек
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="admin-order-card__receipt-thumb-btn"
+                        onClick={() =>
+                          window.open(
+                            receiptUrl,
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                        }
+                      >
+                        <img
+                          src={receiptUrl}
+                          alt="Чек оплаты"
+                          className="admin-order-card__receipt-thumb"
+                        />
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="admin-order-card__tracking">
                   <label
                     className="admin-order-card__tracking-label"
@@ -249,7 +284,29 @@ export default function AdminOrdersPage() {
                     }
                     onClick={() => void applyStatus(order.id, "CONFIRMED")}
                   >
-                    Подтвердить оплату
+                    ✅ Подтвердить оплату
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-order-card__btn admin-order-card__btn--reject"
+                    disabled={busy || canon !== "PAID_PENDING"}
+                    title={
+                      canon !== "PAID_PENDING"
+                        ? "Только для ожидания проверки оплаты"
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          "Отклонить оплату и отменить заказ?"
+                        )
+                      ) {
+                        return;
+                      }
+                      void applyStatus(order.id, "CANCELLED");
+                    }}
+                  >
+                    ❌ Отклонить оплату
                   </button>
                   <button
                     type="button"

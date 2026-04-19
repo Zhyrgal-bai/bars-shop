@@ -197,7 +197,7 @@
 .floating-cart.cart-float {
   position: fixed;
   z-index: 1950;
-  background: #191919;
+  background: linear-gradient(145deg, #1e293b, #0f172a);
   color: #fff;
   border-radius: 50%;
   width: 56px;
@@ -209,11 +209,19 @@
   box-shadow:
     0 4px 18px rgba(0, 0, 0, 0.35),
     0 2px 8px rgba(220, 38, 38, 0.12);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: grab;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  transition: all 0.3s ease;
+}
+
+.floating-cart.cart-float:hover {
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(220, 38, 38, 0.2);
+  transform: scale(1.04);
 }
 
 .floating-cart.cart-float:active {

@@ -87,6 +87,8 @@ export type AdminOrderListItem = {
   statusText: string;
   total: number;
   tracking?: string | null;
+  receiptUrl?: string | null;
+  receiptType?: string | null;
 };
 
 export type AdminAnalytics = {
@@ -258,7 +260,7 @@ export const adminService = {
 
   async updateOrderStatus(
     id: number,
-    status: "ACCEPTED" | "CONFIRMED" | "SHIPPED"
+    status: "ACCEPTED" | "CONFIRMED" | "SHIPPED" | "CANCELLED"
   ): Promise<void> {
     const userId = requireAdminUserId();
     const url = `${API_BASE_URL}/orders/${id}`;

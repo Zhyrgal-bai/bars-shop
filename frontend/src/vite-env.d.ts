@@ -28,6 +28,8 @@ interface TelegramWebApp {
 interface ImportMetaEnv {
   readonly VITE_ADMIN_IDS?: string;
   readonly VITE_API_URL?: string;
+  /** Номер MBank для экрана оплаты (по умолчанию 0556996312). */
+  readonly VITE_MBANK_PHONE?: string;
 }
 
 interface ImportMeta {

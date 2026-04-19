@@ -168,6 +168,7 @@ export default function HomePage() {
       </div>
       <ProductGrid
         products={filteredProducts}
+        catalogProductCount={products.length}
         showToast={showToast}
         onProductSelect={setSelectedProduct}
       />

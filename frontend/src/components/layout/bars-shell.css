@@ -57,6 +57,26 @@
   justify-content: flex-end;
 }
 
+.bars-header__burger-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bars-header__notify-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid rgba(11, 15, 26, 0.95);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5);
+  pointer-events: none;
+}
+
 .bars-header__user {
   display: flex;
   align-items: center;
@@ -67,12 +87,12 @@
 }
 
 .bars-header__user-name {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
   line-height: 1.2;
-  text-align: right;
-  max-width: 42vw;
+  text-align: left;
+  max-width: 38vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -152,12 +172,16 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 0 0 1px rgba(220, 38, 38, 0.25),
+    0 4px 14px rgba(0, 0, 0, 0.35);
   background: linear-gradient(145deg, rgba(220, 38, 38, 0.35), rgba(15, 23, 42, 0.9));
   font-size: 0.95rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: 0.02em;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .bars-header__mark img {
@@ -303,12 +327,25 @@
   color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
-  transition:
-    color 0.22s ease,
-    background 0.22s ease,
-    border-color 0.22s ease,
-    transform 0.15s ease;
+  transition: all 0.3s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.bars-drawer__link--orders {
+  position: relative;
+}
+
+.bars-drawer__orders-attention-dot {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid var(--bars-surface);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.45);
+  pointer-events: none;
 }
 
 .bars-drawer__link:hover {

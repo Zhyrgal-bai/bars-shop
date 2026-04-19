@@ -8,6 +8,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCartStore } from "./store/useCartStore";
 import { useAdminPanelVisible, useAdminAccessBootstrap } from "@/utils/admin";
+import { fetchMyOrders } from "./services/myOrdersApi";
+import { getWebAppUserId } from "./utils/telegramUserId";
+import type { MyOrderRow } from "./types/myOrder";
 import "./App.css";
 import "./components/ui/Admin.css";
 import Header from "./components/layout/Header";
@@ -15,6 +18,13 @@ import SideMenu from "./components/layout/SideMenu";
 import FloatingCart from "./components/layout/FloatingCart";
 
 type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
+
+function myOrdersNeedAttention(rows: MyOrderRow[]): boolean {
+  return rows.some((o) => {
+    const s = String(o.status).toUpperCase();
+    return s === "ACCEPTED" || s === "PAID_PENDING";
+  });
+}
 
 function initialPageFromPath(): AppNavPage {
   if (typeof window === "undefined") return "home";
@@ -26,6 +36,7 @@ export default function App() {
   const location = useLocation();
   const [page, setPage] = useState<AppNavPage>(initialPageFromPath);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [myOrdersAttention, setMyOrdersAttention] = useState(false);
   const adminAllowed = useAdminPanelVisible();
   useAdminAccessBootstrap();
 
@@ -52,6 +63,31 @@ export default function App() {
       setPage("faq");
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    const uid = getWebAppUserId();
+    if (!Number.isFinite(uid) || uid <= 0) {
+      setMyOrdersAttention(false);
+      return;
+    }
+    let cancelled = false;
+    const refreshAttention = () => {
+      void (async () => {
+        try {
+          const rows = await fetchMyOrders(uid);
+          if (!cancelled) setMyOrdersAttention(myOrdersNeedAttention(rows));
+        } catch {
+          if (!cancelled) setMyOrdersAttention(false);
+        }
+      })();
+    };
+    refreshAttention();
+    const intervalId = window.setInterval(refreshAttention, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [page]);
 
   useEffect(() => {
     const onPop = () => {
@@ -98,9 +134,15 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
+  const showHeaderAttentionDot = myOrdersAttention && page !== "my-orders";
+
   return (
     <div className="app">
-      <Header menuOpen={isMenuOpen} onMenuToggle={handleMenuToggle} />
+      <Header
+        menuOpen={isMenuOpen}
+        onMenuToggle={handleMenuToggle}
+        attentionDot={showHeaderAttentionDot}
+      />
 
       <SideMenu
         open={isMenuOpen}
@@ -109,6 +151,7 @@ export default function App() {
         onNavToHome={() => handleNav("home")}
         onNavToCart={() => handleNav("cart")}
         cartCount={totalQuantity}
+        myOrdersAttentionDot={myOrdersAttention}
         onNavToMyOrders={() => handleNav("my-orders")}
         onNavToFaq={() => handleNav("faq")}
         onNavToAdmin={goAdminSection}

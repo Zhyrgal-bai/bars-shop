@@ -26,6 +26,16 @@ function statusClass(status: string): string {
   return canonicalStatus(status).toLowerCase().replace(/\s+/g, "-");
 }
 
+/** Подписи статусов (как на сервере `orderStatusRu`) — для мгновенного обновления списка. */
+const ORDER_STATUS_LABEL_RU: Record<string, string> = {
+  NEW: "Новый",
+  ACCEPTED: "Принят",
+  PAID_PENDING: "Ожидает подтверждения оплаты",
+  CONFIRMED: "Оплачен",
+  SHIPPED: "Отправлен",
+  CANCELLED: "Отменён",
+};
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrderListItem[]>([]);
   const [filter, setFilter] = useState<FilterTab>("ALL");
@@ -93,16 +103,31 @@ export default function AdminOrdersPage() {
   ) {
     setBusyId(id);
     try {
-      await adminService.updateOrderStatus(id, status);
-      await load();
+      const data = await adminService.updateOrderStatus(id, status);
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id !== id) return o;
+          const nextStatus =
+            data &&
+            typeof data === "object" &&
+            data !== null &&
+            "status" in data &&
+            typeof (data as { status: unknown }).status === "string"
+              ? (data as { status: string }).status
+              : status;
+          return {
+            ...o,
+            status: nextStatus,
+            statusText:
+              ORDER_STATUS_LABEL_RU[nextStatus] ?? o.statusText,
+          };
+        })
+      );
+      void load({ silent: true });
       window.dispatchEvent(new CustomEvent("bars-shop:admin-orders-changed"));
     } catch (e) {
       console.error(e);
-      alert(
-        e instanceof Error
-          ? e.message
-          : "Не удалось обновить статус"
-      );
+      alert("Ошибка при обновлении");
     } finally {
       setBusyId(null);
     }

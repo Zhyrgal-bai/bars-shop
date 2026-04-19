@@ -798,6 +798,15 @@ app.post("/products", async (req: Request, res: Response) => {
   }
 });
 
+/** Prisma может вернуть `BigInt` (например `user.telegramId`) — `res.json` без этого падает. */
+function jsonWithBigInt<T>(data: T): unknown {
+  return JSON.parse(
+    JSON.stringify(data as object, (_key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+}
+
 async function performOrderStatusUpdate(
   orderId: number,
   statusRaw: unknown
@@ -879,7 +888,7 @@ app.post("/order/status", async (req: Request, res: Response) => {
     if (!result.ok) {
       return res.status(result.statusCode).json({ error: result.error });
     }
-    return res.json(result.body);
+    return res.json(jsonWithBigInt(result.body));
   } catch (e) {
     console.error("ORDER STATUS ERROR:", e);
     res.status(500).json({ error: "Server error" });
@@ -898,14 +907,14 @@ app.put("/orders/:id/status", async (req: Request, res: Response) => {
     if (!result.ok) {
       return res.status(result.statusCode).json({ error: result.error });
     }
-    return res.json(result.body);
+    return res.json(jsonWithBigInt(result.body));
   } catch (e) {
     console.error("PUT ORDER STATUS ERROR:", e);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-app.put("/orders/:id", async (req: Request, res: Response) => {
+async function handleAdminOrderPatch(req: Request, res: Response) {
   try {
     if (!denyIfNotAdmin(req, res)) return;
     const orderId = Number(req.params.id);
@@ -978,12 +987,15 @@ app.put("/orders/:id", async (req: Request, res: Response) => {
       });
     }
 
-    return res.json(updated);
+    return res.json(jsonWithBigInt(updated));
   } catch (e) {
-    console.error("PUT ORDER ERROR:", e);
-    res.status(500).json({ error: "Server error" });
+    console.error("PATCH/PUT ORDER ERROR:", e);
+    res.status(500).json({ error: "Update failed" });
   }
-});
+}
+
+app.put("/orders/:id", handleAdminOrderPatch);
+app.patch("/orders/:id", handleAdminOrderPatch);
 
 app.post("/analytics", async (req: Request, res: Response) => {
   if (!denyIfNotAdmin(req, res)) return;

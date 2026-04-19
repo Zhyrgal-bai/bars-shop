@@ -265,27 +265,43 @@ export const adminService = {
   async updateOrderStatus(
     id: number,
     status: "ACCEPTED" | "CONFIRMED" | "SHIPPED" | "CANCELLED"
-  ): Promise<void> {
+  ): Promise<unknown> {
     const userId = requireAdminUserId();
     const url = `${API_BASE_URL}/orders/${id}`;
     const res = await fetch(url, {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, userId }),
     });
+    console.log("PATCH /orders/:id (status)", res.status);
     if (!res.ok) throw new Error(await readFetchError(res));
+    const text = await res.text();
+    if (!text.trim()) return null;
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
   },
 
   /** Статус доставки / комментарий (только tracking, без смены status). */
-  async updateOrderTracking(id: number, tracking: string): Promise<void> {
+  async updateOrderTracking(id: number, tracking: string): Promise<unknown> {
     const userId = requireAdminUserId();
     const url = `${API_BASE_URL}/orders/${id}`;
     const res = await fetch(url, {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tracking, userId }),
     });
+    console.log("PATCH /orders/:id (tracking)", res.status);
     if (!res.ok) throw new Error(await readFetchError(res));
+    const text = await res.text();
+    if (!text.trim()) return null;
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
   },
 
   async getAnalytics(): Promise<AdminAnalytics> {

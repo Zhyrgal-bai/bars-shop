@@ -2,14 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchMyOrders } from "../services/myOrdersApi";
 import { apiAbsoluteUrl } from "../services/api";
 import { getWebAppUserId } from "../utils/telegramUserId";
-import {
-  getMbankPaymentPhone,
-  mbankOrderQrImageUrl,
-} from "../utils/mbankQrUrl";
 import type { MyOrderRow } from "../types/myOrder";
 import "./MyOrders.css";
 
 export type { MyOrderRow };
+
+type GlobalSettings = {
+  mbank?: string | null;
+  qr?: string | null;
+};
 
 function orderStatusVisual(status: string): { icon: string; label: string } {
   const u = status.toUpperCase();
@@ -168,13 +169,20 @@ function OrderReceiptBlock({
   );
 }
 
-function OrderPaymentBlock({ order }: { order: MyOrderRow }) {
+function OrderPaymentBlock({
+  order,
+  settings,
+}: {
+  order: MyOrderRow;
+  settings: GlobalSettings | null;
+}) {
   const st = order.status.toUpperCase();
   const hasReceipt = Boolean(order.receiptUrl?.trim());
   if (isFinikOrder(order)) return null;
   if (st !== "ACCEPTED" || hasReceipt) return null;
 
-  const phone = getMbankPaymentPhone();
+  const phone = settings?.mbank?.trim() || "Не указан";
+  const qr = settings?.qr?.trim() || "";
 
   const copyPhone = async () => {
     try {
@@ -188,13 +196,15 @@ function OrderPaymentBlock({ order }: { order: MyOrderRow }) {
   return (
     <div className="my-orders__pay-block">
       <p className="my-orders__pay-ux">Сканируйте QR или оплатите по номеру</p>
-      <img
-        className="my-orders__pay-qr-img my-orders__pay-qr-img--lg"
-        src={mbankOrderQrImageUrl(order.total)}
-        alt={`QR оплаты ${order.total} сом`}
-        width={250}
-        height={250}
-      />
+      {qr ? (
+        <img
+          className="my-orders__pay-qr-img my-orders__pay-qr-img--lg"
+          src={qr}
+          alt={`QR оплаты заказа #${order.id}`}
+          width={250}
+          height={250}
+        />
+      ) : null}
       <div className="my-orders__pay-info">
         <p className="my-orders__pay-info-title">💳 Оплата заказа #{order.id}</p>
         <p className="my-orders__pay-info-sum">{order.total} сом</p>
@@ -213,6 +223,7 @@ function OrderPaymentBlock({ order }: { order: MyOrderRow }) {
 
 export default function MyOrders() {
   const [orders, setOrders] = useState<MyOrderRow[]>([]);
+  const [settings, setSettings] = useState<GlobalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -226,8 +237,15 @@ export default function MyOrders() {
       return;
     }
     try {
-      const data = await fetchMyOrders(userId);
+      const [data, settingsRes] = await Promise.all([
+        fetchMyOrders(userId),
+        fetch(apiAbsoluteUrl("/settings"), { method: "GET" }),
+      ]);
+      const settingsData = (await settingsRes
+        .json()
+        .catch(() => ({}))) as GlobalSettings;
       setOrders(data);
+      setSettings(settingsData);
       setError(null);
     } catch (e) {
       console.error(e);
@@ -318,7 +336,7 @@ export default function MyOrders() {
               {order.tracking != null && order.tracking.trim() !== "" && (
                 <p className="my-orders__tracking">📍 {order.tracking}</p>
               )}
-              <OrderPaymentBlock order={order} />
+              <OrderPaymentBlock order={order} settings={settings} />
               <OrderReceiptBlock order={order} onUploaded={load} />
               {order.items != null && order.items.length > 0 && (
                 <ul className="my-orders__items">

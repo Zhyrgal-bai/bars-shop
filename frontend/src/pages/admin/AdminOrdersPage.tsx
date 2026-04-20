@@ -43,6 +43,7 @@ export default function AdminOrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [busyTrackingId, setBusyTrackingId] = useState<number | null>(null);
+  const [clearBusy, setClearBusy] = useState<"completed" | "rejected" | "all" | null>(null);
   const [trackingDraft, setTrackingDraft] = useState<Record<number, string>>(
     {}
   );
@@ -153,6 +154,23 @@ export default function AdminOrdersPage() {
     }
   }
 
+  async function clearOrders(type: "completed" | "rejected" | "all") {
+    const ok = window.confirm("Ты уверен?");
+    if (!ok) return;
+    setClearBusy(type);
+    try {
+      const deleted = await adminService.clearOrders(type);
+      await load();
+      window.dispatchEvent(new CustomEvent("bars-shop:admin-orders-changed"));
+      alert(`Удалено заказов: ${deleted}`);
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Не удалось очистить заказы");
+    } finally {
+      setClearBusy(null);
+    }
+  }
+
   return (
     <div className="admin-dash-page">
       <header className="admin-dash-page__head">
@@ -182,6 +200,33 @@ export default function AdminOrdersPage() {
             {tab === "ALL" ? "Все" : tab.replace(/_/g, " ")}
           </button>
         ))}
+      </div>
+
+      <div className="admin-order-clear-actions">
+        <button
+          type="button"
+          className="admin-order-clear-actions__btn"
+          disabled={clearBusy !== null}
+          onClick={() => void clearOrders("completed")}
+        >
+          {clearBusy === "completed" ? "Очистка…" : "🧹 Очистить завершенные"}
+        </button>
+        <button
+          type="button"
+          className="admin-order-clear-actions__btn"
+          disabled={clearBusy !== null}
+          onClick={() => void clearOrders("rejected")}
+        >
+          {clearBusy === "rejected" ? "Очистка…" : "❌ Очистить отклоненные"}
+        </button>
+        <button
+          type="button"
+          className="admin-order-clear-actions__btn admin-order-clear-actions__btn--danger"
+          disabled={clearBusy !== null}
+          onClick={() => void clearOrders("all")}
+        >
+          {clearBusy === "all" ? "Очистка…" : "💥 Очистить все"}
+        </button>
       </div>
 
       {loading && <p className="admin-dash-page__muted">Загрузка…</p>}

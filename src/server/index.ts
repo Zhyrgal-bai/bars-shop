@@ -478,6 +478,48 @@ app.post(
 );
 
 // ================== PAYMENT (Prisma singleton id=1) ==================
+app.get("/settings", async (_req: Request, res: Response) => {
+  try {
+    let settings = await prisma.paymentSettings.findUnique({ where: { id: 1 } });
+    if (!settings) {
+      settings = await prisma.paymentSettings.create({
+        data: { id: 1 },
+      });
+    }
+    // `other` — совместимый алиас для клиентов, ожидающих это поле.
+    return res.json({
+      ...settings,
+      other: settings.obank,
+    });
+  } catch (e) {
+    console.error("GET /settings ERROR:", e);
+    return res.status(500).json({ error: "Failed to load settings" });
+  }
+});
+
+app.post("/settings", async (req: Request, res: Response) => {
+  if (!denyIfNotAdmin(req, res)) return;
+  try {
+    const body = req.body as Record<string, unknown>;
+    const data = {
+      mbank: body.mbank,
+      optima: body.optima,
+      // Поддерживаем `other` как алиас `obank`.
+      obank: body.obank ?? body.other,
+      card: body.card,
+      qr: body.qr,
+    } as Record<string, unknown>;
+    const settings = await upsertPaymentSettings(prisma, data);
+    return res.json({
+      ...settings,
+      other: settings.obank,
+    });
+  } catch (e) {
+    console.error("POST /settings ERROR:", e);
+    return res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
 app.post("/payment/list", async (req: Request, res: Response) => {
   if (!denyIfNotAdmin(req, res)) return;
   try {
@@ -996,6 +1038,37 @@ async function handleAdminOrderPatch(req: Request, res: Response) {
 
 app.put("/orders/:id", handleAdminOrderPatch);
 app.patch("/orders/:id", handleAdminOrderPatch);
+
+app.delete("/orders/clear", async (req: Request, res: Response) => {
+  try {
+    if (!denyIfNotAdmin(req, res)) return;
+
+    const rawType = Array.isArray(req.query.type)
+      ? req.query.type[0]
+      : req.query.type;
+    const type = String(rawType ?? "all").toLowerCase();
+
+    // Исторические алиасы из UI:
+    // - completed -> SHIPPED (финальный успешный статус)
+    // - rejected  -> CANCELLED (отклонён/отменён)
+    let where: { status?: string } = {};
+    if (type === "completed") {
+      where.status = "SHIPPED";
+    } else if (type === "rejected") {
+      where.status = "CANCELLED";
+    } else if (type === "all") {
+      where = {};
+    } else {
+      return res.status(400).json({ error: "Unsupported clear type" });
+    }
+
+    const deleted = await prisma.order.deleteMany({ where });
+    return res.json({ deleted: deleted.count });
+  } catch (e) {
+    console.error("DELETE /orders/clear:", e);
+    return res.status(500).json({ error: "Clear failed" });
+  }
+});
 
 app.post("/analytics", async (req: Request, res: Response) => {
   if (!denyIfNotAdmin(req, res)) return;

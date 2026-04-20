@@ -304,6 +304,21 @@ export const adminService = {
     }
   },
 
+  async clearOrders(type: "completed" | "rejected" | "all"): Promise<number> {
+    const userId = requireAdminUserId();
+    const url = new URL(`${API_BASE_URL}/orders/clear`);
+    url.searchParams.set("type", type);
+    url.searchParams.set("userId", String(userId));
+    const res = await fetch(url.toString(), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) throw new Error(await readFetchError(res));
+    const data = (await res.json().catch(() => ({}))) as { deleted?: unknown };
+    return typeof data.deleted === "number" ? data.deleted : 0;
+  },
+
   async getAnalytics(): Promise<AdminAnalytics> {
     const d = await adminPost<AdminAnalytics>("/analytics", {});
     if (

@@ -1,17 +1,12 @@
 /**
- * Бот поддержки: отдельный процесс от `bot.ts` (заказы), свой токен `SUPPORT_BOT_TOKEN`.
- * Запуск: `npm run bot:support` (long polling, не трогает webhook основного бота).
- *
- * Требуется: SUPPORT_BOT_TOKEN, ADMIN_ID (Telegram user id админа).
+ * Бот поддержки: токен SUPPORT_BOT_TOKEN (не BOT_TOKEN), отдельно от bot.ts.
+ * Старт при импорте модуля (см. import в server/index.ts) или: npm run bot:support
  */
 import "dotenv/config";
 import { Telegraf } from "telegraf";
 
-const SUPPORT_GREETING =
-  "Здравствуйте! Напишите ваш вопрос, мы ответим в ближайшее время.";
-
 const AUTO_HELP_STUB =
-  "Пока оператор на связи, кратко опишите ситуацию — с вами свяжутся. Спасибо за обращение!";
+  "Пока вы ждёте, кратко опишите ситуацию — с вами свяжутся в ближайшее время.";
 
 function getAdminTgId(): number | null {
   const raw = process.env.ADMIN_ID?.trim();
@@ -33,27 +28,34 @@ function getMessageText(m: unknown): string | undefined {
   return undefined;
 }
 
-function isStartCommandText(text: string | undefined): boolean {
+/** /start, /start@bot, /start app (из Mini App ?start=app) */
+function isStartCommand(text: string | undefined): boolean {
   if (text == null) return false;
-  return /^\/start(@\w+)?$/i.test(text.trim());
+  return /^\/start(@\S*)?(\s+|$)/i.test(text.trim());
 }
 
-async function start(): Promise<void> {
+function isUnknownCommand(text: string | undefined): boolean {
+  if (text == null) return false;
+  if (isStartCommand(text)) return false;
+  return text.trim().startsWith("/");
+}
+
+export async function startSupportBot(): Promise<void> {
   const token = getSupportToken();
   if (!token) {
-    console.error(
-      "botsupport: задайте SUPPORT_BOT_TOKEN в .env (см. .env.example)"
+    console.warn(
+      "Support bot: SUPPORT_BOT_TOKEN not set — support bot is disabled"
     );
-    process.exit(1);
+    return;
   }
 
   const adminId = getAdminTgId();
   if (adminId == null) {
     console.warn(
-      "botsupport: ADMIN_ID не задан — ответы админа и пересылка отключены"
+      "Support bot: ADMIN_ID not set — no forwarding, user replies still work"
     );
   } else {
-    console.log("botsupport: админ (ADMIN_ID):", adminId);
+    console.log("Support bot: admin ADMIN_ID =", adminId);
   }
 
   const bot = new Telegraf(token);
@@ -63,27 +65,30 @@ async function start(): Promise<void> {
     if (!from) return;
     const m = ctx.message;
     if (!m) return;
+    const userText = getMessageText(m);
 
-    // ——— Ответ админа пользователю (reply к пересланному) ———
     if (adminId != null && from.id === adminId) {
       const replyTo =
         "reply_to_message" in m && m.reply_to_message
           ? m.reply_to_message
           : undefined;
       if (replyTo) {
-        const ff =
-          "forward_from" in replyTo
-            ? (replyTo as { forward_from?: { id: number } }).forward_from
-            : undefined;
+        const ff = (
+          replyTo as { forward_from?: { id: number } }
+        ).forward_from;
         const target = ff != null && Number.isFinite(ff.id) ? ff.id : undefined;
         if (target != null && target > 0) {
           try {
-            await ctx.telegram.copyMessage(target, ctx.chat.id, m.message_id);
+            await ctx.telegram.copyMessage(
+              target,
+              ctx.chat.id,
+              m.message_id
+            );
             return;
           } catch (e) {
-            console.error("botsupport: copyMessage to user failed:", e);
+            console.error("Support bot: copyMessage to user failed:", e);
             await ctx
-              .reply("Не удалось доставить ответ пользователю. Попробуйте ещё раз.")
+              .reply("Не удалось доставить ответ пользователю.")
               .catch(() => undefined);
             return;
           }
@@ -96,59 +101,79 @@ async function start(): Promise<void> {
       return;
     }
 
-    // ——— /start — только приветствие, без дублирования и без пересылки ———
-    const userText = getMessageText(m);
-    if (isStartCommandText(userText)) {
+    if (userText != null && isStartCommand(userText)) {
       try {
-        await ctx.reply(`${SUPPORT_GREETING}\n\n${AUTO_HELP_STUB}`);
+        await ctx.reply("Здравствуйте! Напишите ваш вопрос 👇\n\n" + AUTO_HELP_STUB);
       } catch (e) {
-        console.error("botsupport: /start reply failed:", e);
+        console.error("Support bot: /start reply failed:", e);
       }
       return;
     }
 
-    // ——— остальные команды (не /start) не трогаем в этом боте ———
-    if (userText?.trim().startsWith("/")) {
+    if (userText != null && isUnknownCommand(userText)) {
+      try {
+        await ctx.reply("Напишите обычным текстом, без /команд. Спасибо.");
+      } catch (e) {
+        console.error("Support bot: /command reply failed:", e);
+      }
       return;
     }
 
-    // ——— Сообщения пользователей: авто‑ответ (заглушка) + пересылка админу ———
-    try {
-      await ctx.reply(SUPPORT_GREETING);
-      await ctx.reply(AUTO_HELP_STUB);
-    } catch (e) {
-      console.error("botsupport: reply to user failed:", e);
-    }
-
-    if (adminId != null) {
+    if (userText != null) {
+      const userMessage = userText;
       try {
-        await ctx.telegram.forwardMessage(adminId, ctx.chat.id, m.message_id);
+        await ctx.reply(
+          "Мы получили ваш вопрос: " +
+            userMessage +
+            "\n\nСкоро ответим ✅"
+        );
       } catch (e) {
-        const preview = userText ?? "[не текст]";
-        console.error("botsupport: forward to admin failed:", e);
+        console.error("Support bot: text reply failed:", e);
+      }
+      if (adminId == null) return;
+      try {
+        await ctx.telegram.forwardMessage(
+          adminId,
+          ctx.chat.id,
+          m.message_id
+        );
+      } catch (e) {
+        console.error("Support bot: forward to admin failed:", e);
         try {
           await ctx.telegram.sendMessage(
             adminId,
-            `Сообщение от user id ${from.id}:\n\n${String(preview).slice(0, 3500)}`
+            `Сообщение от user id ${from.id}:\n\n${String(userMessage).slice(0, 3500)}`
           );
         } catch (e2) {
-          console.error("botsupport: fallback send to admin failed:", e2);
+          console.error("Support bot: fallback to admin failed:", e2);
         }
       }
+      return;
+    }
+
+    try {
+      await ctx.reply(
+        "Мы получили ваше сообщение. Скоро ответим. Спасибо! ✅\n\n" + AUTO_HELP_STUB
+      );
+    } catch (e) {
+      console.error("Support bot: media reply failed:", e);
+    }
+    if (adminId == null) return;
+    try {
+      await ctx.telegram.forwardMessage(adminId, ctx.chat.id, m.message_id);
+    } catch (e) {
+      console.error("Support bot: forward media to admin failed:", e);
     }
   });
 
   try {
     await bot.launch();
-    console.log("botsupport: long polling started");
+    console.log("Support bot started (long polling)");
   } catch (e) {
-    console.error("botsupport: launch failed:", e);
-    process.exit(1);
+    console.error("Support bot: launch failed:", e);
   }
-
-  const stop = () => bot.stop("SIGINT");
-  process.once("SIGINT", stop);
-  process.once("SIGTERM", stop);
 }
 
-void start();
+void startSupportBot().catch((e) => {
+  console.error("Support bot: unhandled", e);
+});

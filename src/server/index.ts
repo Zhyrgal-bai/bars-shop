@@ -45,6 +45,8 @@ import {
 } from "./promoRepo.js";
 import { notifyAfterOrderStatusChangeFromApi } from "./orderTelegramNotify.js";
 import { cleanInput, validateKgPhone } from "./orderInputSanitize.js";
+/** Бот поддержки (SUPPORT_BOT_TOKEN, long polling) — не смешан с order bot. */
+import "../bot/botsupport.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),

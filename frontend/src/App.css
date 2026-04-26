@@ -193,14 +193,10 @@
   }
 }
 
-/* Above fixed header (1300), below drawer overlay (1980) */
+/* Above fixed header (1300), below drawer overlay (1980) — left/top с JS (перетаскивание) */
 .floating-cart.cart-float {
   position: fixed;
   z-index: 1950;
-  right: 16px;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  left: auto;
-  top: auto;
   background: linear-gradient(145deg, #1e293b, #0f172a);
   color: #fff;
   border-radius: 50%;
@@ -220,6 +216,13 @@
   -webkit-user-select: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.floating-cart.floating-cart--dragging {
+  z-index: 1960;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 @media (hover: hover) and (pointer: fine) {

@@ -1,9 +1,10 @@
 import type { Product } from "../../types";
 import ProductCard from "./ProductCard";
 
+/* Две колонки на телефоне/планшете; больше колонок только на wide */
 const gridClass =
-  "mx-auto grid w-full max-w-7xl grid-cols-1 content-start items-stretch gap-4 " +
-  "sm:grid-cols-2";
+  "product-grid mx-auto grid w-full max-w-7xl grid-cols-2 content-start " +
+  "items-stretch gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4";
 
 const emptyClass =
   "col-span-full flex min-h-[220px] flex-col items-center justify-center rounded-[20px] " +

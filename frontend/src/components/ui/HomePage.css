@@ -1,9 +1,15 @@
 .home-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #3A0000 30%, #1a1220 100%);
-  /* px-3 + запас под фиксированную корзину (FloatingCart) */
-  padding: 0 12px 6rem;
+  /* Уже с сетки 2 колонки + плавающая корзина */
+  padding: 0 8px 5.5rem;
   box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .home-page {
+    padding: 0 12px 6rem;
+  }
 }
 
 /* Первый заказ: скидка */

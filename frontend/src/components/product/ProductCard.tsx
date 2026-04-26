@@ -261,7 +261,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
   return (
     <div
       className={
-        `product-card flex h-full min-h-0 flex-col${outOfStock ? " out" : ""}`
+        `product-card product-card--market flex h-full min-h-0 flex-col${outOfStock ? " out" : ""}`
       }
     >
       <div
@@ -298,6 +298,15 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
           ))}
         </div>
 
+        {discountPct > 0 ? (
+          <div
+            className="product-sale-ribbon"
+            aria-label={`Скидка ${discountPct}%`}
+          >
+            <span className="product-sale-ribbon__text">−{discountPct}%</span>
+          </div>
+        ) : null}
+
         <div className="dots">
           {images.map((_, i) => (
             <span
@@ -312,7 +321,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
         </div>
       </div>
 
-      <div className="product-info flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
+      <div className="product-info flex min-h-0 flex-1 flex-col gap-2 p-2 sm:gap-3 sm:p-4">
         <h3
           className={`product-title${onOpenDetail ? " product-title--detail" : ""}`}
           onClick={onOpenDetail ? openDetail : undefined}

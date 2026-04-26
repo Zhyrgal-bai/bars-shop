@@ -4,6 +4,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import AdminApp from "./pages/admin/AdminApp";
 import FAQ from "./pages/FAQ";
 import MyOrders from "./pages/MyOrders";
+import SupportPage from "./pages/SupportPage";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCartStore } from "./store/useCartStore";
@@ -17,7 +18,14 @@ import Header from "./components/layout/Header";
 import SideMenu from "./components/layout/SideMenu";
 import FloatingCart from "./components/layout/FloatingCart";
 
-type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
+type AppNavPage =
+  | "home"
+  | "cart"
+  | "checkout"
+  | "admin"
+  | "faq"
+  | "my-orders"
+  | "support";
 
 function myOrdersNeedAttention(rows: MyOrderRow[]): boolean {
   return rows.some((o) => {
@@ -28,7 +36,10 @@ function myOrdersNeedAttention(rows: MyOrderRow[]): boolean {
 
 function initialPageFromPath(): AppNavPage {
   if (typeof window === "undefined") return "home";
-  return window.location.pathname === "/faq" ? "faq" : "home";
+  const p = window.location.pathname;
+  if (p === "/faq") return "faq";
+  if (p === "/support") return "support";
+  return "home";
 }
 
 export default function App() {
@@ -50,8 +61,13 @@ export default function App() {
         setPage("faq");
         return;
       }
+      if (next === "support") {
+        navigate("/support");
+        setPage("support");
+        return;
+      }
       setPage(next);
-      if (location.pathname === "/faq") {
+      if (location.pathname === "/faq" || location.pathname === "/support") {
         navigate("/", { replace: true });
       }
     },
@@ -61,6 +77,8 @@ export default function App() {
   useEffect(() => {
     if (location.pathname === "/faq") {
       setPage("faq");
+    } else if (location.pathname === "/support") {
+      setPage("support");
     }
   }, [location.pathname]);
 
@@ -92,8 +110,13 @@ export default function App() {
   useEffect(() => {
     const onPop = () => {
       queueMicrotask(() => {
-        if (window.location.pathname !== "/faq") {
-          setPage((p) => (p === "faq" ? "home" : p));
+        const path = window.location.pathname;
+        if (path === "/faq") {
+          setPage("faq");
+        } else if (path === "/support") {
+          setPage("support");
+        } else {
+          setPage((p) => (p === "faq" || p === "support" ? "home" : p));
         }
       });
     };
@@ -117,10 +140,16 @@ export default function App() {
   };
 
   const goAdminSection = (
-    section: "orders" | "products" | "categories" | "analytics" | "settings"
+    section:
+      | "orders"
+      | "products"
+      | "categories"
+      | "analytics"
+      | "settings"
+      | "support"
   ) => {
     setPage("admin");
-    if (location.pathname === "/faq") {
+    if (location.pathname === "/faq" || location.pathname === "/support") {
       navigate("/", { replace: true });
     }
     const paths: Record<typeof section, string> = {
@@ -129,6 +158,7 @@ export default function App() {
       categories: "#/admin/categories",
       analytics: "#/admin/analytics",
       settings: "#/admin/settings",
+      support: "#/admin/support",
     };
     window.location.hash = paths[section];
     setIsMenuOpen(false);
@@ -154,12 +184,14 @@ export default function App() {
         myOrdersAttentionDot={myOrdersAttention}
         onNavToMyOrders={() => handleNav("my-orders")}
         onNavToFaq={() => handleNav("faq")}
+        onNavToSupport={() => handleNav("support")}
         onNavToAdmin={goAdminSection}
       />
 
       <div className="content app__content">
         {page === "home" && <HomePage />}
         {page === "faq" && <FAQ />}
+        {page === "support" && <SupportPage />}
         {page === "my-orders" && <MyOrders />}
         {page === "cart" && (
           <CartPage onGoToCheckout={() => commitPage("checkout")} />

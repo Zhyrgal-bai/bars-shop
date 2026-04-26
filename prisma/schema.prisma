@@ -123,3 +123,14 @@ model Promo {
   maxUses  Int
   used     Int    @default(0)
 }
+
+/// Чат поддержки внутри Mini App (userId = Telegram user id строкой).
+model SupportMessage {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  message     String
+  isFromAdmin Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

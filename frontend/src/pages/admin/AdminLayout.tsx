@@ -23,6 +23,7 @@ const nav: {
   },
   { href: "#/admin/analytics", match: "analytics", label: "Аналитика", icon: "📊" },
   { href: "#/admin/settings", match: "settings", label: "Настройки", icon: "⚙️" },
+  { href: "#/admin/support", match: "support", label: "Поддержка", icon: "💬" },
 ];
 
 type AdminLayoutProps = {

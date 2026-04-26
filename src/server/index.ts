@@ -45,6 +45,7 @@ import {
 } from "./promoRepo.js";
 import { notifyAfterOrderStatusChangeFromApi } from "./orderTelegramNotify.js";
 import { cleanInput, validateKgPhone } from "./orderInputSanitize.js";
+import { registerSupportRoutes } from "./supportHttp.js";
 /** Бот поддержки (SUPPORT_BOT_TOKEN, long polling) — не смешан с order bot. */
 import "../bot/botsupport.js";
 
@@ -293,6 +294,8 @@ app.use(
   })
 );
 app.use(express.json());
+
+registerSupportRoutes(app);
 
 const TELEGRAM_WEBHOOK_URL =
   "https://bars-shop.onrender.com/telegram-webhook";

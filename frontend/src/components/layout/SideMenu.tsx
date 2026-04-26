@@ -6,17 +6,24 @@ import {
   telegramDisplayInitial,
   telegramDisplayName,
 } from "../../utils/telegramUserMark";
-import { openSupportLink } from "@/utils/openSupportLink";
 import "./bars-shell.css";
 
-type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
+type AppNavPage =
+  | "home"
+  | "cart"
+  | "checkout"
+  | "admin"
+  | "faq"
+  | "my-orders"
+  | "support";
 
 type AdminSection =
   | "orders"
   | "products"
   | "categories"
   | "analytics"
-  | "settings";
+  | "settings"
+  | "support";
 
 type SideMenuProps = {
   open: boolean;
@@ -30,6 +37,7 @@ type SideMenuProps = {
   myOrdersAttentionDot?: boolean;
   onNavToMyOrders: () => void;
   onNavToFaq: () => void;
+  onNavToSupport: () => void;
   onNavToAdmin: (section: AdminSection) => void;
 };
 
@@ -44,6 +52,7 @@ function readHash(): string {
 
 function activeAdminSection(hash: string): AdminSection | null {
   if (!hash.includes("/admin")) return null;
+  if (hash.includes("/support")) return "support";
   if (hash.includes("/analytics")) return "analytics";
   if (hash.includes("/settings")) return "settings";
   if (hash.includes("/categories")) return "categories";
@@ -63,6 +72,7 @@ const ADMIN_LINKS: {
   { section: "categories", hash: "#/admin/categories", icon: "🗂", label: "Категории" },
   { section: "analytics", hash: "#/admin/analytics", icon: "📊", label: "Аналитика" },
   { section: "settings", hash: "#/admin/settings", icon: "⚙", label: "Настройки" },
+  { section: "support", hash: "#/admin/support", icon: "💬", label: "Поддержка" },
 ];
 
 export default function SideMenu({
@@ -75,6 +85,7 @@ export default function SideMenu({
   myOrdersAttentionDot = false,
   onNavToMyOrders,
   onNavToFaq,
+  onNavToSupport,
   onNavToAdmin,
 }: SideMenuProps) {
   const hash = useSyncExternalStore(subscribeHash, readHash, () => "");
@@ -95,11 +106,7 @@ export default function SideMenu({
   const cartActive = currentPage === "cart";
   const myOrdersActive = currentPage === "my-orders";
   const faqActive = currentPage === "faq";
-
-  const openSupport = () => {
-    openSupportLink();
-    onClose();
-  };
+  const supportActive = currentPage === "support";
 
   return (
     <AnimatePresence>
@@ -241,7 +248,14 @@ export default function SideMenu({
                   FAQ
                 </button>
 
-                <button type="button" className="bars-drawer__link" onClick={openSupport}>
+                <button
+                  type="button"
+                  className={`bars-drawer__link${supportActive ? " bars-drawer__link--active" : ""}`}
+                  onClick={() => {
+                    onNavToSupport();
+                    onClose();
+                  }}
+                >
                   <span className="bars-drawer__link-icon" aria-hidden>
                     💬
                   </span>

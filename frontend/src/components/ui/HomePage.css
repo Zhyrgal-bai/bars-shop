@@ -1,7 +1,9 @@
 .home-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #3A0000 30%, #1a1220 100%);
-  padding: 0 16px;
+  /* px-3 + запас под фиксированную корзину (FloatingCart) */
+  padding: 0 12px 6rem;
+  box-sizing: border-box;
 }
 
 /* Первый заказ: скидка */
@@ -122,17 +124,27 @@
 
 .search-input {
   width: calc(100% - 24px);
+  max-width: 100%;
   margin: 12px;
-  padding: 10px;
-  border-radius: 12px;
-  border: none;
-  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+  min-height: 48px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.45;
   outline: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.search-input:focus {
+  border-color: rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15);
 }
 
 .search-input::placeholder {
@@ -154,10 +166,10 @@
 }
 
 .categories button {
-  padding: 8px 14px;
-  min-height: 36px;
+  padding: 10px 16px;
+  min-height: 40px;
   border-radius: 14px;
-  border: none;
+  border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.7);
   font-family: var(--font-sans);
@@ -166,7 +178,12 @@
   letter-spacing: 0.03em;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .categories button:hover {
@@ -175,7 +192,7 @@
 }
 
 .categories button:active {
-  transform: scale(0.96);
+  opacity: 0.9;
 }
 
 .categories button.active {

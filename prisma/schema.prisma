@@ -130,6 +130,8 @@ model SupportMessage {
   userId      String
   message     String
   isFromAdmin Boolean  @default(false)
+  /// false = админ ещё не прочитал (сообщ. клиента) или клиент не «увидел» (ответ поддержки) — в зависимости от isFromAdmin
+  isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])

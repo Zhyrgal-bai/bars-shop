@@ -197,6 +197,10 @@
 .floating-cart.cart-float {
   position: fixed;
   z-index: 1950;
+  right: 16px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: auto;
+  top: auto;
   background: linear-gradient(145deg, #1e293b, #0f172a);
   color: #fff;
   border-radius: 50%;
@@ -210,18 +214,21 @@
     0 4px 18px rgba(0, 0, 0, 0.35),
     0 2px 8px rgba(220, 38, 38, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: grab;
-  touch-action: none;
+  cursor: pointer;
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.floating-cart.cart-float:hover {
-  box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(220, 38, 38, 0.2);
-  transform: scale(1.04);
+@media (hover: hover) and (pointer: fine) {
+  .floating-cart.cart-float:hover {
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.4),
+      0 0 20px rgba(220, 38, 38, 0.2);
+    transform: scale(1.04);
+  }
 }
 
 .floating-cart.cart-float:active {
@@ -249,9 +256,14 @@
 }
 
 button {
-  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-button:active {
-  transform: scale(0.95);
+@media (max-width: 768px) {
+  .floating-cart.cart-float {
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, 0.32),
+      0 1px 4px rgba(220, 38, 38, 0.1);
+  }
 }

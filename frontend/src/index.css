@@ -16,6 +16,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: clip;
   }
 
   body {
@@ -25,6 +28,25 @@
     margin: 0;
     background: #0b0f1a;
     line-height: 1.5;
+    overflow-x: clip;
+    color-scheme: dark;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -32,6 +54,10 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+#root {
+  overflow-x: clip;
 }
 
 * {

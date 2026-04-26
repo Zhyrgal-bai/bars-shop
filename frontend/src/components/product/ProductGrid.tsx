@@ -1,10 +1,16 @@
 import type { Product } from "../../types";
 import ProductCard from "./ProductCard";
-import "../ui/ProductGrid.css";
+
+const gridClass =
+  "mx-auto grid w-full max-w-7xl grid-cols-1 content-start items-stretch gap-4 " +
+  "sm:grid-cols-2";
+
+const emptyClass =
+  "col-span-full flex min-h-[220px] flex-col items-center justify-center rounded-[20px] " +
+  "border border-white/10 bg-white/[0.04] p-8 text-center mx-0";
 
 type ProductGridProps = {
   products: Product[];
-  /** Всего товаров в каталоге до фильтра (для пустых состояний). */
   catalogProductCount: number;
   showToast: (msg: string) => void;
   onProductSelect?: (product: Product) => void;
@@ -18,24 +24,32 @@ export default function ProductGrid({
 }: ProductGridProps) {
   if (catalogProductCount === 0) {
     return (
-      <div className="product-grid product-grid--empty" role="status">
-        <p className="product-grid__empty-title">Скоро появятся товары 🔥</p>
-        <p className="product-grid__empty-hint">Загляните позже</p>
+      <div className={gridClass} role="status">
+        <div className={emptyClass}>
+          <p className="m-0 mb-2 font-display text-[1.05rem] font-semibold uppercase tracking-wider text-white/95">
+            Скоро появятся товары 🔥
+          </p>
+          <p className="m-0 text-sm text-white/70">Загляните позже</p>
+        </div>
       </div>
     );
   }
 
   if (products.length === 0) {
     return (
-      <div className="product-grid product-grid--empty" role="status">
-        <p className="product-grid__empty-title">Ничего не найдено</p>
-        <p className="product-grid__empty-hint">Смените категорию или поиск</p>
+      <div className={gridClass} role="status">
+        <div className={emptyClass}>
+          <p className="m-0 mb-2 font-display text-[1.05rem] font-semibold uppercase tracking-wider text-white/95">
+            Ничего не найдено
+          </p>
+          <p className="m-0 text-sm text-white/70">Смените категорию или поиск</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="product-grid">
+    <div className={gridClass}>
       {products.map((p) => (
         <ProductCard
           key={p.id}

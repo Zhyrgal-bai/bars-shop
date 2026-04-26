@@ -5,6 +5,7 @@ export type SupportMessageRow = {
   userId: string;
   message: string;
   isFromAdmin: boolean;
+  isRead: boolean;
   createdAt: string;
 };
 
@@ -13,6 +14,8 @@ export type SupportInboxThread = {
   lastMessage: string;
   lastAt: string;
   lastFromAdmin: boolean;
+  /** Есть непрочитанные сообщения от клиента (для админки) */
+  hasUnread: boolean;
 };
 
 export async function postSupportMessage(params: {

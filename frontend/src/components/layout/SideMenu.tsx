@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAdminPanelVisible } from "@/utils/admin";
 import { getTelegramUser } from "../../utils/telegram";
 import {
@@ -92,6 +92,15 @@ export default function SideMenu({
   const user = useMemo(() => getTelegramUser(), []);
   const admin = useAdminPanelVisible();
   const adminActive = activeAdminSection(hash);
+  const reduceMotion = useReducedMotion();
+
+  const drawerTransition = reduceMotion
+    ? { type: "tween" as const, duration: 0.01, ease: "linear" as const }
+    : { type: "tween" as const, duration: 0.28, ease: [0.4, 0, 0.2, 1] as const };
+
+  const overlayTransition = reduceMotion
+    ? { duration: 0.01, ease: "linear" as const }
+    : { duration: 0.22, ease: [0.4, 0, 0.2, 1] as const };
 
   useEffect(() => {
     if (!open) return;
@@ -119,7 +128,7 @@ export default function SideMenu({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            transition={overlayTransition}
             onClick={onClose}
           />
           <motion.aside
@@ -131,7 +140,7 @@ export default function SideMenu({
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             exit={{ x: -300 }}
-            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+            transition={drawerTransition}
             drag="x"
             dragConstraints={{ left: -130, right: 0 }}
             dragElastic={0.06}

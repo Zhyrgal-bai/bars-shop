@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Product, ProductColor, Size } from "../../types";
 import { useCartStore } from "../../store/useCartStore";
 import {
@@ -40,6 +40,10 @@ function ProductDetailContent({
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const touchStartXRef = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
+  const panelTransition = reduceMotion
+    ? { type: "tween" as const, duration: 0.01, ease: "linear" as const }
+    : { type: "tween" as const, duration: 0.32, ease: [0.4, 0, 0.2, 1] as const };
 
   const hasCustomColors = Boolean(
     (product.colors && product.colors.length > 0) ||
@@ -255,7 +259,7 @@ function ProductDetailContent({
       initial={{ opacity: 0, scale: 0.92, y: 18 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.92, y: 18 }}
-      transition={{ type: "spring", damping: 28, stiffness: 340 }}
+      transition={panelTransition}
       onClick={(e) => e.stopPropagation()}
     >
       <button

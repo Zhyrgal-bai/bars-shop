@@ -259,7 +259,11 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
   };
 
   return (
-    <div className={`product-card${outOfStock ? " out" : ""}`}>
+    <div
+      className={
+        `product-card flex h-full min-h-0 flex-col${outOfStock ? " out" : ""}`
+      }
+    >
       <div
         className={`product-image-wrapper${onOpenDetail ? " product-image-wrapper--detail" : ""}`}
         onTouchStart={handleTouchStart}
@@ -308,7 +312,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
         </div>
       </div>
 
-      <div className="product-info">
+      <div className="product-info flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
         <h3
           className={`product-title${onOpenDetail ? " product-title--detail" : ""}`}
           onClick={onOpenDetail ? openDetail : undefined}
@@ -370,64 +374,66 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
           </>
         )}
 
-        <div className="product-bottom">
-          <span className="product-price-block">
-            {discountPct > 0 ? (
-              <>
-                <span className="product-price-old" aria-label="Без скидки">
+        {!outOfStock && (
+          <div className="product-info-footer mt-auto flex w-full min-w-0 flex-col gap-2">
+            <div className="product-price-block w-full min-w-0">
+              {discountPct > 0 ? (
+                <>
+                  <span className="product-price-old" aria-label="Без скидки">
+                    {product.price}{" "}
+                    <span className="product-price-currency">сом</span>
+                  </span>
+                  <span className="product-price product-price--sale text-lg sm:text-xl">
+                    {displayPrice}{" "}
+                    <span className="product-price-currency">сом</span>
+                  </span>
+                </>
+              ) : (
+                <span className="product-price text-lg sm:text-xl">
                   {product.price}{" "}
                   <span className="product-price-currency">сом</span>
                 </span>
-                <span className="product-price product-price--sale">
-                  {displayPrice}{" "}
-                  <span className="product-price-currency">сом</span>
-                </span>
-              </>
-            ) : (
-              <span className="product-price">
-                {product.price}{" "}
-                <span className="product-price-currency">сом</span>
-              </span>
-            )}
-          </span>
+              )}
+            </div>
 
-          <div className="product-actions">
-            {quantity <= 0 ? (
-              <button
-                className="product-add-btn"
-                onClick={handleAddToCart}
-                disabled={outOfStock}
-                type="button"
-              >
-                Добавить
-              </button>
-            ) : (
-              <>
+            <div className="product-cta w-full min-w-0">
+              {quantity <= 0 ? (
                 <button
-                  className="product-action-btn"
-                  onClick={handleDecrement}
-                  disabled={!canAdjustQty}
+                  className="product-add-btn w-full rounded-lg py-3 text-center text-xs font-bold uppercase tracking-wide"
+                  onClick={handleAddToCart}
+                  disabled={outOfStock}
                   type="button"
-                  aria-label="Уменьшить"
                 >
-                  -
+                  Добавить
                 </button>
-                <span className="product-qty" aria-label="Количество">
-                  {quantity}
-                </span>
-                <button
-                  className="product-action-btn"
-                  onClick={handleIncrement}
-                  disabled={!canAdjustQty || atMaxQty}
-                  type="button"
-                  aria-label="Увеличить"
-                >
-                  +
-                </button>
-              </>
-            )}
+              ) : (
+                <div className="product-actions flex w-full items-center justify-center gap-2">
+                  <button
+                    className="product-action-btn"
+                    onClick={handleDecrement}
+                    disabled={!canAdjustQty}
+                    type="button"
+                    aria-label="Уменьшить"
+                  >
+                    -
+                  </button>
+                  <span className="product-qty" aria-label="Количество">
+                    {quantity}
+                  </span>
+                  <button
+                    className="product-action-btn"
+                    onClick={handleIncrement}
+                    disabled={!canAdjustQty || atMaxQty}
+                    type="button"
+                    aria-label="Увеличить"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

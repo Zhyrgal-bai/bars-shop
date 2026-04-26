@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { Telegraf } from "telegraf";
 import type { OrderStatus } from "../server/orderStatus.js";
+import { isAdmin } from "../server/adminAuth.js";
 import { prisma } from "../server/db.js";
 import { listPaymentDetailsFromDb } from "../server/paymentRepo.js";
 import {
@@ -239,6 +240,66 @@ if (bot) {
       console.log("NOTIFY_FALLBACK chat set from /start:", notifyFallbackChatId);
     }
     void ctx.reply("Бот работает ✅");
+  });
+
+  const MAX_SUPPORT_MSG = 4000;
+
+  /** Админ отвечает в чате бота: `reply 123456789 Текст ответа` → запись в SupportMessage (Mini App увидит по polling). */
+  tgBot.on("text", async (ctx) => {
+    try {
+      if (!isAdmin(ctx.from?.id)) return;
+
+      const text = (ctx.message.text ?? "").trim();
+      if (!text.toLowerCase().startsWith("reply")) return;
+
+      const parts = text.split(/\s+/);
+      if (parts.length < 2) return;
+      if ((parts[0] ?? "").toLowerCase() !== "reply") return;
+
+      if (parts.length < 3) {
+        await ctx.reply("❌ Формат: reply USER_ID текст");
+        return;
+      }
+
+      const userIdRaw = parts[1];
+      const replyText = parts.slice(2).join(" ").trim();
+      if (!userIdRaw || !replyText) {
+        await ctx.reply("❌ Формат: reply USER_ID текст");
+        return;
+      }
+
+      const uidNum = Number(userIdRaw);
+      if (!Number.isFinite(uidNum) || uidNum <= 0) {
+        await ctx.reply("❌ Неверный USER_ID");
+        return;
+      }
+
+      if (replyText.length > MAX_SUPPORT_MSG) {
+        await ctx.reply("❌ Сообщение слишком длинное (макс. 4000 симв.)");
+        return;
+      }
+
+      await prisma.supportMessage.create({
+        data: {
+          userId: String(uidNum),
+          message: replyText,
+          isFromAdmin: true,
+        },
+      });
+      await ctx.reply("✅ Ответ отправлен");
+      console.log(
+        "SUPPORT reply from admin saved: targetUserId=%s len=%s",
+        String(uidNum),
+        replyText.length
+      );
+    } catch (e) {
+      console.error("SUPPORT REPLY (Telegram) ERROR:", e);
+      try {
+        await ctx.reply("❌ Ошибка при сохранении");
+      } catch (e2) {
+        console.error("SUPPORT REPLY: ctx.reply failed", e2);
+      }
+    }
   });
 
   tgBot.on("message", (ctx) => {

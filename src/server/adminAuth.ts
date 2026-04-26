@@ -6,6 +6,13 @@ const ADMIN_IDS = process.env.ADMIN_IDS
       .filter((id) => id !== "")
   : [];
 
+/** Список numeric Telegram id админов: `ADMIN_IDS` или один `ADMIN_ID` (как в .env). */
+export function listAdminTelegramIds(): string[] {
+  if (ADMIN_IDS.length > 0) return [...ADMIN_IDS];
+  const one = process.env.ADMIN_ID?.trim();
+  return one ? [one] : [];
+}
+
 function queryUserId(req: Request): string | undefined {
   const raw = req.query.userId;
   const v = Array.isArray(raw) ? raw[0] : raw;

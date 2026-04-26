@@ -36,15 +36,18 @@
 }
 
 .home-discount-banner__title {
+  font-family: var(--font-sans);
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 600;
   color: #fff;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
 .home-discount-banner__promo {
+  font-family: var(--font-sans);
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.72);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .home-discount-banner__promo strong {
@@ -59,9 +62,10 @@
   padding: 10px 16px;
   border: none;
   border-radius: 14px;
+  font-family: var(--font-sans);
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fff;
   background: linear-gradient(135deg, #dc2626, #b91c1c);
@@ -93,32 +97,25 @@
 }
 
 .hero-title {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 5vw, 2rem);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.1em;
+  line-height: 1.12;
+  margin-bottom: 8px;
   color: #fff;
   text-align: center;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  font-family: 'Roboto', sans-serif;
-  font-style: italic;
-  font-weight: 900;
-  text-transform: uppercase;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  font-family: 'Roboto', sans-serif;
-  font-style: italic;
-  font-weight: 900;
-  text-transform: uppercase;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  font-family: 'Roboto', sans-serif;
-  font-style: italic;
-  font-weight: 900;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.45);
   text-transform: uppercase;
 }
 
 .hero-subtitle {
-  font-size: 16px;
-  opacity: 0.7;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  opacity: 0.78;
   color: #fff;
   text-align: center;
 }
@@ -131,7 +128,10 @@
   border: none;
   background: rgba(255, 255, 255, 0.04);
   color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
   outline: none;
 }
 
@@ -159,9 +159,11 @@
   border-radius: 14px;
   border: none;
   background: rgba(255, 255, 255, 0.05);
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-sans);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.3s ease;

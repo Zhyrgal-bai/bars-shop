@@ -148,9 +148,20 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
-.colors button:hover {
+.colors button:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.5);
   transform: scale(1.06);
+}
+
+.colors button:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+  transform: none;
+}
+
+.colors button:disabled:hover {
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .colors button.active {
@@ -172,8 +183,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.03em;
   cursor: pointer;
 }
 
@@ -189,26 +202,43 @@
 }
 
 .sizes button:disabled {
-  opacity: 0.35;
+  opacity: 0.32;
   cursor: not-allowed;
+  color: #9ca3af;
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .out-of-stock {
+  font-family: var(--font-sans);
   text-align: center;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
   color: #9ca3af;
   padding: 6px 0;
 }
 
+.product-stock-status {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0 0 2px;
+}
+
+.product-stock-status--in {
+  color: #34d399;
+}
+
 .product-title {
   margin: 0 0 6px;
   color: #ffffff;
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -235,6 +265,7 @@
 }
 
 .product-price-old {
+  font-family: var(--font-sans);
   font-size: 11px;
   color: #6b7280;
   text-decoration: line-through;
@@ -243,14 +274,17 @@
 }
 
 .product-price {
-  font-size: 13px;
-  color: #9ca3af;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
   white-space: nowrap;
 }
 
 .product-price--sale {
-  color: #ff6b6b;
+  color: #f87171;
   font-weight: 700;
 }
 
@@ -269,8 +303,11 @@
   min-width: 16px;
   text-align: center;
   color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .product-action-btn,
@@ -282,8 +319,10 @@
   border: none;
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.05em;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
@@ -304,7 +343,9 @@
   padding: 8px 14px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: #fff;
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);

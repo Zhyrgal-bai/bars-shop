@@ -175,6 +175,7 @@ export default function HomePage() {
       <ProductDetailModal
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
+        showToast={showToast}
       />
       <Toast message={toast} visible={isToastVisible} />
     </div>

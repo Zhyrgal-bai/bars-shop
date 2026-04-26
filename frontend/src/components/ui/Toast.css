@@ -5,9 +5,13 @@
   transform: translateX(-50%);
   padding: 10px 16px;
   border-radius: 12px;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.75);
   color: #fff;
+  font-family: var(--font-sans);
   font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
   backdrop-filter: blur(10px);
 }
 

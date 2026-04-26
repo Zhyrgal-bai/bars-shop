@@ -30,6 +30,11 @@ interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   /** Номер MBank для экрана оплаты (по умолчанию 0556996312). */
   readonly VITE_MBANK_PHONE?: string;
+  /**
+   * @username бота поддержки (без токена), например: BarsSupportBot
+   * → откроется https://t.me/BarsSupportBot
+   */
+  readonly VITE_SUPPORT_BOT_USERNAME?: string;
 }
 
 interface ImportMeta {

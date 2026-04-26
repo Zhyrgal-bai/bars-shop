@@ -1,14 +1,49 @@
-body {
-  margin: 0;
-  background: #0b0f1a;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #fff;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* для var() в обычных .css-файлах компонентов (совпадает с theme.extend.fontFamily) */
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-manrope: "Manrope", "Inter", ui-sans-serif, sans-serif;
+    --font-display: "Manrope", "Inter", ui-sans-serif, sans-serif;
+    --bars-text-muted: rgba(255, 255, 255, 0.76);
+    --bars-text-caption: rgba(255, 255, 255, 0.7);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    /* без @apply — в Vite + Tailwind в dev иногда падает обработка @apply (500 на /src/index.css) */
+    font-family: var(--font-sans);
+    color: #fff;
+    margin: 0;
+    background: #0b0f1a;
+    line-height: 1.5;
+  }
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
 * {
   box-sizing: border-box;
+}
+
+@layer components {
+  .bars-typo-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
 }

@@ -6,9 +6,8 @@ import {
   telegramDisplayInitial,
   telegramDisplayName,
 } from "../../utils/telegramUserMark";
+import { openSupportLink } from "@/utils/openSupportLink";
 import "./bars-shell.css";
-
-const SUPPORT_BOT_URL = "https://t.me/coffee_market_test_bot";
 
 type AppNavPage = "home" | "cart" | "checkout" | "admin" | "faq" | "my-orders";
 
@@ -98,7 +97,7 @@ export default function SideMenu({
   const faqActive = currentPage === "faq";
 
   const openSupport = () => {
-    window.open(SUPPORT_BOT_URL, "_blank", "noopener,noreferrer");
+    openSupportLink();
     onClose();
   };
 

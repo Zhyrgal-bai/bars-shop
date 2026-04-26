@@ -55,14 +55,23 @@
 }
 
 .checkout h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
   margin-top: 0;
   margin-bottom: 12px;
 }
 
 .checkout-empty-text {
+  font-family: var(--font-sans);
   margin: 0 0 16px;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 .checkout .form {
@@ -359,10 +368,11 @@
   border: none;
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: 0.05em;
   cursor: pointer;
-  font-family: inherit;
 }
 
 .checkout-promo-apply:disabled {
@@ -397,7 +407,11 @@
   border: none;
   background: #ff2d2d;
   color: #fff;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 

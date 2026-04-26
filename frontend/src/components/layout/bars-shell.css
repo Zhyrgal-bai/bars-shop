@@ -88,8 +88,10 @@
 
 .bars-header__user-name {
   font-size: 0.8rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.88);
   line-height: 1.2;
   text-align: left;
   max-width: 38vw;
@@ -153,9 +155,10 @@
 
 .bars-header__logo {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 0.35em;
+  font-weight: 700;
+  letter-spacing: 0.4em;
   text-transform: uppercase;
   color: #fff;
   user-select: none;
@@ -288,8 +291,9 @@
 }
 
 .bars-drawer__brand-title {
+  font-family: var(--font-display);
   font-size: 1.35rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: #fff;
@@ -321,7 +325,9 @@
   border: none;
   border-radius: 14px;
   font-size: 0.95rem;
+  font-family: var(--font-sans);
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-align: left;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.7);

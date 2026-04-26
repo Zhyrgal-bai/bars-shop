@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Product, ProductColor, Size } from "../../types";
+import type { Product, Size } from "../../types";
 import { useCartStore } from "../../store/useCartStore";
+import {
+  getEffectiveColorKey,
+  getEffectiveSizeKey,
+  getSizesListForSelection,
+  validateAddToCartInput,
+} from "../../utils/cartAddValidation";
 import {
   getDiscountPercent,
   getEffectivePrice,
@@ -29,17 +35,25 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
       (product.variants && product.variants.length > 0)
   );
 
-  const colors: ProductColor[] = useMemo(() => {
+  const colorItems = useMemo(() => {
     if (product.colors && product.colors.length > 0) {
-      return product.colors;
+      const anyIn = product.sizes?.length
+        ? product.sizes.some((s) => s.stock > 0)
+        : !isOutOfStock(product);
+      return product.colors.map((c) => ({
+        name: c.name,
+        hex: c.hex,
+        disabled: !anyIn,
+      }));
     }
     if (product.variants && product.variants.length > 0) {
       return product.variants.map((v) => ({
         name: v.color,
         hex: getVariantCssBackground(v),
+        disabled: !v.sizes?.some((s) => (s.stock ?? 0) > 0),
       }));
     }
-    return [{ name: "default", hex: "#ffffff" }];
+    return [];
   }, [product]);
 
   const sizes = useMemo<Size[]>(() => {
@@ -72,17 +86,15 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
     [product]
   );
 
-  const lineColor = useMemo(() => {
-    if (hasCustomColors) {
-      return (
-        selectedColor ??
-        product.variants?.[0]?.color ??
-        getNormalizedVariants(product)[0]?.color ??
-        null
-      );
-    }
-    return getNormalizedVariants(product)[0]?.color ?? "default";
-  }, [hasCustomColors, selectedColor, product]);
+  const lineColor = useMemo(
+    () => getEffectiveColorKey(product, selectedColor),
+    [product, selectedColor]
+  );
+
+  const effectiveSize = useMemo(
+    () => getEffectiveSizeKey(product, selectedColor, selectedSize),
+    [product, selectedColor, selectedSize]
+  );
 
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
@@ -96,12 +108,39 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
 
   useEffect(() => {
     const v = product.variants;
-    if (!v?.length) return;
-    setSelectedColor((prev) => {
-      if (prev && v.some((x) => x.color === prev)) return prev;
-      return v[0]!.color;
-    });
-  }, [product.id, product.variants?.length, product.variants]);
+    if (!v?.length) {
+      if (product.colors && product.colors.length === 1) {
+        setSelectedColor(product.colors[0]!.name);
+      }
+      return;
+    }
+    if (v.length === 1) {
+      const only = v[0]!;
+      setSelectedColor(
+        only.sizes?.some((s) => s.stock > 0) ? only.color : only.color
+      );
+    } else {
+      setSelectedColor(null);
+    }
+  }, [product.id, product.variants, product.colors]);
+
+  useEffect(() => {
+    const c = getEffectiveColorKey(product, selectedColor);
+    if (c == null) return;
+    const list = getSizesListForSelection(product, c);
+    if (list.length > 1 && selectedSize && !list.some((s) => s.size === selectedSize)) {
+      setSelectedSize(null);
+    }
+  }, [product, selectedColor, selectedSize]);
+
+  useEffect(() => {
+    const c = getEffectiveColorKey(product, selectedColor);
+    if (c == null) return;
+    const list = getSizesListForSelection(product, c);
+    if (list.length === 1) {
+      setSelectedSize((prev) => (prev === list[0]!.size ? prev : list[0]!.size));
+    }
+  }, [product.id, product, selectedColor]);
 
   useEffect(() => {
     setCurrentIndex((i) =>
@@ -110,21 +149,25 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
   }, [images.length]);
 
   const selectedStock = useMemo(() => {
-    if (!selectedSize) return 0;
-    return sizes.find((s) => s.size === selectedSize)?.stock ?? 0;
-  }, [selectedSize, sizes]);
+    const c = getEffectiveColorKey(product, selectedColor);
+    if (c == null) return 0;
+    const s = getEffectiveSizeKey(product, selectedColor, selectedSize);
+    if (s == null) return 0;
+    return getSizesListForSelection(product, c).find((x) => x.size === s)
+      ?.stock ?? 0;
+  }, [product, selectedColor, selectedSize]);
 
   const cartItem = useMemo(() => {
-    if (!selectedSize || lineColor === null) return null;
+    if (effectiveSize == null || lineColor === null) return null;
     return (
       items.find(
         (i) =>
           i.productId === product.id &&
           i.color === lineColor &&
-          i.size === selectedSize
+          i.size === effectiveSize
       ) ?? null
     );
-  }, [items, product.id, selectedSize, lineColor]);
+  }, [items, product.id, effectiveSize, lineColor]);
 
   const quantity = cartItem?.quantity ?? 0;
 
@@ -132,34 +175,54 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
   const displayPrice = getEffectivePrice(product);
 
   const upsertQuantity = (nextQuantity: number) => {
-    if (!selectedSize || outOfStock || lineColor === null) return;
-    if (selectedStock <= 0) return;
+    const v = validateAddToCartInput(
+      product,
+      selectedSize,
+      selectedColor,
+      outOfStock
+    );
+    if (!v.ok) return;
+    if (v.stock <= 0) return;
 
-    if (cartItem) removeItem(cartItem);
+    const lineMatch =
+      items.find(
+        (i) =>
+          i.productId === product.id &&
+          i.color === v.color &&
+          i.size === v.size
+      ) ?? null;
+    if (lineMatch) removeItem(lineMatch);
     if (nextQuantity <= 0) return;
 
-    const capped = Math.min(nextQuantity, selectedStock);
+    const capped = Math.min(nextQuantity, v.stock);
     addItem({
       productId: product.id!,
       name: product.name,
       price: displayPrice,
       image: getPrimaryImage(product),
-      size: selectedSize,
-      color: lineColor,
+      size: v.size,
+      color: v.color,
       quantity: capped,
     });
   };
 
-  const canAddToCart =
+  const canAdjustQty =
     !outOfStock &&
-    selectedSize !== null &&
-    selectedStock > 0 &&
-    (!hasCustomColors || lineColor !== null);
+    effectiveSize != null &&
+    lineColor != null &&
+    selectedStock > 0;
 
   const handleAddToCart = () => {
-    if (!canAddToCart || lineColor === null) return;
-    const line = sizes.find((s) => s.size === selectedSize);
-    if (!line || line.stock === 0) return;
+    const r = validateAddToCartInput(
+      product,
+      selectedSize,
+      selectedColor,
+      outOfStock
+    );
+    if (!r.ok) {
+      showToast(r.message);
+      return;
+    }
     upsertQuantity(1);
     showToast("Добавлено в корзину");
   };
@@ -266,19 +329,27 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
         </h3>
 
         {outOfStock ? (
-          <div className="out-of-stock">НЕТ В НАЛИЧИИ</div>
+          <div className="out-of-stock">Нет в наличии</div>
         ) : (
           <>
-            {hasCustomColors && (
+            <div className="product-stock-status product-stock-status--in">
+              В наличии
+            </div>
+            {hasCustomColors && colorItems.length > 0 && (
               <div className="colors">
-                {colors.map((c) => (
+                {colorItems.map((c) => (
                   <button
                     key={c.name}
                     type="button"
-                    aria-label={c.name}
+                    disabled={c.disabled}
+                    aria-label={
+                      c.disabled ? `${c.name} (нет в наличии)` : c.name
+                    }
                     style={{ background: c.hex }}
                     className={selectedColor === c.name ? "active" : ""}
-                    onClick={() => setSelectedColor(c.name)}
+                    onClick={() => {
+                      if (!c.disabled) setSelectedColor(c.name);
+                    }}
                   />
                 ))}
               </div>
@@ -292,7 +363,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
                   className={selectedSize === s.size ? "active" : ""}
                   onClick={() => setSelectedSize(s.size)}
                 >
-                  {s.size} ({s.stock})
+                  {s.size}
                 </button>
               ))}
             </div>
@@ -325,7 +396,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
               <button
                 className="product-add-btn"
                 onClick={handleAddToCart}
-                disabled={outOfStock || !canAddToCart}
+                disabled={outOfStock}
                 type="button"
               >
                 Добавить
@@ -335,11 +406,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
                 <button
                   className="product-action-btn"
                   onClick={handleDecrement}
-                  disabled={
-                    outOfStock ||
-                    !selectedSize ||
-                    lineColor === null
-                  }
+                  disabled={!canAdjustQty}
                   type="button"
                   aria-label="Уменьшить"
                 >
@@ -351,12 +418,7 @@ export default function ProductCard({ product, showToast, onOpenDetail }: Props)
                 <button
                   className="product-action-btn"
                   onClick={handleIncrement}
-                  disabled={
-                    outOfStock ||
-                    !selectedSize ||
-                    lineColor === null ||
-                    atMaxQty
-                  }
+                  disabled={!canAdjustQty || atMaxQty}
                   type="button"
                   aria-label="Увеличить"
                 >

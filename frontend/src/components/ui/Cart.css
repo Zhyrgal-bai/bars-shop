@@ -14,9 +14,12 @@
 .cart-title {
   margin: 0;
   padding: 16px 16px 12px;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
   color: #ffffff;
 }
 
@@ -79,9 +82,12 @@
 
 .cart-top h3 {
   margin: 0;
-  font-size: 15px;
+  font-family: var(--font-display);
+  font-size: 14px;
   font-weight: 600;
+  letter-spacing: 0.05em;
   line-height: 1.25;
+  text-transform: uppercase;
   color: #ffffff;
   flex: 1 1 auto;
   min-width: 0;
@@ -93,9 +99,11 @@
 }
 
 .cart-top .price {
-  font-size: 14px;
-  font-weight: 600;
-  color: #9ca3af;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -121,9 +129,11 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: background 0.2s ease, opacity 0.2s ease;
 }
@@ -140,8 +150,10 @@
 .cart-actions span {
   min-width: 22px;
   text-align: center;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: #ffffff;
 }
 
@@ -169,16 +181,18 @@
 }
 
 .total span {
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 500;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .total strong {
-  font-size: 17px;
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
   font-weight: 700;
   color: #ffffff;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
 }
 
 .checkout-btn {
@@ -188,9 +202,11 @@
   border-radius: 14px;
   background: #ff2d2d;
   color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
@@ -226,16 +242,20 @@
 
 .cart-empty h2 {
   margin: 0 0 8px;
+  font-family: var(--font-display);
   font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .cart-empty p {
   margin: 0 0 20px;
+  font-family: var(--font-sans);
   font-size: 14px;
-  color: #9ca3af;
-  line-height: 1.4;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
   max-width: 260px;
 }
 
@@ -245,9 +265,11 @@
   border-radius: 12px;
   background: rgba(255, 45, 45, 0.18);
   color: #ff2d2d;
+  font-family: var(--font-sans);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background 0.2s ease;
 }

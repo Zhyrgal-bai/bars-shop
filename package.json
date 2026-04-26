@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npx prisma db push --accept-data-loss && npx prisma generate && npx tsx src/server/index.ts",
     "build": "npx prisma generate && npm install --prefix frontend && npm run build --prefix frontend",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "bot:support": "tsx src/bot/botsupport.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
